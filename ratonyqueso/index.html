@@ -1,2 +1,1916 @@
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>El Laberinto del Ratón Blanco 3D - Búsqueda del Queso</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js 3D Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
-<H1> HOLA COMO ESTAN SOY MADY </H1>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0c0e14;
+            font-family: 'Fredoka', 'Inter', sans-serif;
+            color: #f1f5f9;
+        }
+        .app-title-font {
+            font-family: 'Cinzel', serif;
+        }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.1);
+        }
+        .btn-bounce {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+        }
+        .btn-bounce:active {
+            transform: scale(0.92);
+        }
+        .star-gold {
+            color: #fbbf24;
+            filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+        }
+        .star-gray {
+            color: #475569;
+        }
+        /* Custom scrollbar for level selector */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d97706;
+            border-radius: 8px;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.8)); }
+        }
+        .pulse-anim {
+            animation: pulseGlow 2.4s infinite ease-in-out;
+        }
+        .screen-flash-damage {
+            animation: flashRed 0.35s ease-out;
+        }
+        @keyframes flashRed {
+            0% { background-color: rgba(239, 68, 68, 0.45); }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body class="relative w-full h-full overflow-hidden">
+
+    <!-- 3D Three.js Container -->
+    <div id="canvas-container"></div>
+    
+    <!-- Screen Damage Flash Overlay -->
+    <div id="damage-flash" class="pointer-events-none fixed inset-0 z-40 transition-colors duration-200"></div>
+
+    <!-- Live Game HUD (Overlay) -->
+    <div id="game-hud" class="fixed inset-0 z-30 pointer-events-none flex flex-col justify-between p-3 sm:p-5 hidden">
+        <!-- Top Stats Bar -->
+        <div class="flex items-start justify-between w-full max-w-6xl mx-auto pointer-events-auto">
+            <!-- Left Info Card -->
+            <div class="glass-panel px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl flex items-center space-x-3 sm:space-x-4 shadow-xl">
+                <!-- Pause / Menu Button -->
+                <button id="pause-btn" title="Pausar / Menú" class="w-10 h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-400 border border-amber-400/40 flex items-center justify-center btn-bounce transition">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span id="hud-level-tag" class="text-xs uppercase tracking-wider text-amber-300 font-extrabold">Nivel 1</span>
+                        <span id="hud-level-name" class="text-[11px] sm:text-xs text-slate-300 hidden sm:inline">• Castillo de Piedra</span>
+                    </div>
+                    <div class="flex items-center space-x-3 mt-0.5 text-xs sm:text-sm font-bold text-white">
+                        <!-- Lives -->
+                        <span id="hud-lives" class="flex items-center text-rose-400">
+                            <i class="fa-solid fa-heart mr-1"></i><i class="fa-solid fa-heart mr-1"></i><i class="fa-solid fa-heart"></i>
+                        </span>
+                        <span class="text-slate-600">|</span>
+                        <!-- Cheese crumbs -->
+                        <span id="hud-crumbs" class="flex items-center text-yellow-300">
+                            <i class="fa-solid fa-cookie-bite mr-1 text-yellow-400"></i><span id="crumbs-found-text">0</span>/<span id="crumbs-total-text">3</span>
+                        </span>
+                        <span class="text-slate-600">|</span>
+                        <!-- Timer -->
+                        <span id="hud-timer" class="flex items-center text-sky-300 font-mono">
+                            <i class="fa-regular fa-clock mr-1 text-xs"></i><span id="timer-text">00:00</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Actions & Radar -->
+            <div class="flex items-center space-x-2 sm:space-x-3 pointer-events-auto">
+                <!-- Minimap Radar -->
+                <div class="glass-panel p-1 rounded-2xl flex flex-col items-center shadow-lg">
+                    <canvas id="minimap-canvas" width="76" height="76" class="rounded-xl bg-slate-950/90 border border-amber-500/30"></canvas>
+                    <span class="text-[9px] text-amber-300 font-bold uppercase tracking-wider mt-0.5">Radar</span>
+                </div>
+                <!-- Camera & Sound Buttons -->
+                <div class="flex flex-col space-y-1.5">
+                    <button id="cam-toggle-btn" title="Alternar Vista (Cenital / 3D)" class="w-10 h-10 rounded-xl glass-panel text-white hover:text-amber-300 hover:bg-slate-800 flex items-center justify-center btn-bounce transition">
+                        <i id="cam-icon" class="fa-solid fa-street-view text-amber-400"></i>
+                    </button>
+                    <button id="sound-toggle-btn" title="Silenciar / Activar Sonido" class="w-10 h-10 rounded-xl glass-panel text-white hover:text-amber-300 hover:bg-slate-800 flex items-center justify-center btn-bounce transition">
+                        <i id="sound-icon" class="fa-solid fa-volume-high text-white"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nitro Gauge Bar (Middle Bottom) -->
+        <div class="w-full max-w-xs mx-auto mb-2 pointer-events-auto flex flex-col items-center">
+            <div class="w-full glass-panel px-3 py-1.5 rounded-xl border border-amber-500/40 flex items-center space-x-2 shadow-lg">
+                <i class="fa-solid fa-fire text-amber-400 text-xs animate-pulse"></i>
+                <div class="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <div id="nitro-fill" class="bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400 h-full rounded-full transition-all duration-75" style="width: 100%;"></div>
+                </div>
+                <span class="text-[10px] font-black text-amber-300 uppercase tracking-wider">Nitro</span>
+            </div>
+        </div>
+
+        <!-- Virtual Touch Controls for Mobile/Tablet -->
+        <div class="w-full max-w-4xl mx-auto flex items-end justify-between pointer-events-auto pb-1 sm:hidden">
+            <!-- D-Pad Controls -->
+            <div class="grid grid-cols-3 gap-1.5 w-40 h-40 p-1 glass-panel rounded-3xl border border-amber-500/30 shadow-2xl">
+                <div></div>
+                <button id="btn-up" class="glass-panel btn-bounce rounded-2xl flex items-center justify-center text-white text-lg active:bg-amber-500/40">
+                    <i class="fa-solid fa-chevron-up"></i>
+                </button>
+                <div></div>
+                <button id="btn-left" class="glass-panel btn-bounce rounded-2xl flex items-center justify-center text-white text-lg active:bg-amber-500/40">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="flex items-center justify-center text-slate-500 text-xs font-black">
+                    <i class="fa-solid fa-paw text-amber-400/40"></i>
+                </div>
+                <button id="btn-right" class="glass-panel btn-bounce rounded-2xl flex items-center justify-center text-white text-lg active:bg-amber-500/40">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <div></div>
+                <button id="btn-down" class="glass-panel btn-bounce rounded-2xl flex items-center justify-center text-white text-lg active:bg-amber-500/40">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div></div>
+            </div>
+
+            <!-- Nitro Turbo Boost Button -->
+            <button id="btn-turbo" class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 text-slate-950 font-black flex flex-col items-center justify-center shadow-xl active:scale-95 border-2 border-yellow-200">
+                <i class="fa-solid fa-fire text-2xl"></i>
+                <span class="text-[10px] tracking-tighter uppercase font-black">Turbo</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="main-menu" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 transition-opacity duration-300">
+        <div class="glass-panel border-amber-400/50 p-6 sm:p-8 rounded-3xl max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-16 -right-16 w-44 h-44 bg-amber-500/20 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-16 -left-16 w-44 h-44 bg-orange-500/20 rounded-full blur-3xl"></div>
+
+            <div class="w-24 h-24 mx-auto mb-3 bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-600 rounded-3xl p-1 shadow-xl flex items-center justify-center pulse-anim">
+                <div class="w-full h-full bg-slate-950/80 rounded-2xl flex items-center justify-center text-4xl">
+                    🐭🧀
+                </div>
+            </div>
+
+            <h1 class="app-title-font text-2xl sm:text-4xl font-black text-amber-300 tracking-wide mb-1">El Ratón Blanco</h1>
+            <p class="text-xs sm:text-sm text-slate-300 mb-5 font-semibold">En Busca del Gran Queso Sagrado</p>
+
+            <!-- Stats Badge -->
+            <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-6 text-center">
+                <div>
+                    <span class="block text-[10px] text-slate-400 uppercase tracking-wider">Nivel Actual</span>
+                    <span id="menu-current-lvl" class="text-lg font-black text-amber-400">1</span>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 uppercase tracking-wider">Estrellas</span>
+                    <span id="menu-total-stars" class="text-lg font-black text-yellow-300"><i class="fa-solid fa-star text-xs mr-1"></i>0</span>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 uppercase tracking-wider">Quesitos</span>
+                    <span id="menu-total-crumbs" class="text-lg font-black text-emerald-400">0</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <button id="menu-play-btn" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-lg sm:text-xl shadow-lg shadow-amber-500/30 hover:brightness-110 active:scale-95 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span>JUGAR AHORA</span>
+                </button>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button id="menu-select-btn" class="py-3 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-400/30 transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-map"></i>
+                        <span>Niveles</span>
+                    </button>
+                    <button id="menu-help-btn" class="py-3 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-circle-question"></i>
+                        <span>Guía</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEVEL SELECT MODAL -->
+    <div id="level-select-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-3 sm:p-5 transition-opacity duration-300">
+        <div class="glass-panel border-amber-400/50 p-4 sm:p-6 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-700/60">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400">
+                        <i class="fa-solid fa-map-location-dot text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-black text-amber-300">Seleccionar Nivel</h3>
+                        <p class="text-xs text-slate-400">Avanza, esquiva a los gatos y reúne todas las estrellas</p>
+                    </div>
+                </div>
+                <button id="close-select-btn" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- World Tabs Filter -->
+            <div id="world-tabs-container" class="flex space-x-2 overflow-x-auto py-3 text-xs">
+                <!-- Dynamically populated via JS -->
+            </div>
+
+            <!-- Levels Grid -->
+            <div id="levels-grid" class="overflow-y-auto flex-1 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 p-1 max-h-[50vh]">
+                <!-- Dynamically generated level cards -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+                <span id="select-summary-text"><i class="fa-solid fa-cheese text-amber-400 mr-1"></i> Desbloquea niveles ganando queso</span>
+                <button id="reset-progress-btn" class="text-rose-400/80 hover:text-rose-300 underline text-[11px]">Reiniciar Progreso</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY / GUIDE MODAL -->
+    <div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4 transition-opacity duration-300">
+        <div class="glass-panel border-amber-400/50 p-6 rounded-3xl max-w-md w-full shadow-2xl text-slate-200">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
+                <h3 class="text-xl font-black text-amber-300 flex items-center">
+                    <i class="fa-solid fa-book-open mr-2 text-amber-400"></i> ¿Cómo Jugar?
+                </h3>
+                <button id="close-help-btn" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-xs sm:text-sm">
+                <div class="flex items-start space-x-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-2xl">🧀</span>
+                    <div>
+                        <strong class="text-amber-300 block">Objetivo Principal:</strong>
+                        Llega hasta la gran cuña de queso dorado al final del laberinto para completar el nivel.
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-2xl">🐱</span>
+                    <div>
+                        <strong class="text-rose-400 block">¡Cuidado con los Gatos!:</strong>
+                        Patrullan los pasillos. Tienes 3 vidas (❤️). Usa el radar para verlos venir.
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-2xl">🚀</span>
+                    <div>
+                        <strong class="text-yellow-400 block">Tubo de Escape Turbo Nitro:</strong>
+                        Mantén pulsada la <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-300 font-mono">Barra Espaciadora</kbd> o el botón Turbo táctil para quemar nitro y salir disparado.
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-2xl">⭐</span>
+                    <div>
+                        <strong class="text-amber-300 block">3 Estrellas:</strong>
+                        Recoge los quesitos secundarios y sé rápido para conseguir la máxima puntuación en cada fase.
+                    </div>
+                </div>
+            </div>
+            <button id="start-help-play-btn" class="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black shadow-lg">
+                ¡Entendido, a rodar!
+            </button>
+        </div>
+    </div>
+
+    <!-- PAUSE MODAL -->
+    <div id="pause-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
+        <div class="glass-panel border-amber-400/40 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <h2 class="text-2xl font-black text-amber-300 mb-4">Juego en Pausa</h2>
+            <div class="space-y-2.5">
+                <button id="resume-btn" class="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-black hover:brightness-110 transition">
+                    <i class="fa-solid fa-play mr-2"></i> Continuar
+                </button>
+                <button id="restart-lvl-btn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 transition">
+                    <i class="fa-solid fa-rotate-left mr-2"></i> Reiniciar Nivel
+                </button>
+                <button id="pause-to-select-btn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-sm border border-slate-700 transition">
+                    <i class="fa-solid fa-map mr-2"></i> Elegir Nivel
+                </button>
+                <button id="pause-to-menu-btn" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-sm border border-slate-800 transition">
+                    <i class="fa-solid fa-house mr-2"></i> Menú Principal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEVEL SUCCESS MODAL -->
+    <div id="win-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+        <div class="glass-panel border-amber-400/50 p-6 sm:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl relative">
+            <div class="w-20 h-20 mx-auto mb-2 bg-gradient-to-tr from-amber-500 to-yellow-300 rounded-2xl flex items-center justify-center shadow-lg text-4xl pulse-anim">
+                🧀
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-black text-amber-300 mb-1">¡Queso Conseguido!</h2>
+            <p id="win-subtitle" class="text-xs text-slate-300 mb-3">El ratón blanco devoró el banquete.</p>
+
+            <!-- Stars Awarded Display -->
+            <div id="stars-award-container" class="flex justify-center space-x-2 text-3xl mb-4">
+                <i class="fa-solid fa-star star-gold" id="win-star-1"></i>
+                <i class="fa-solid fa-star star-gold" id="win-star-2"></i>
+                <i class="fa-solid fa-star star-gold" id="win-star-3"></i>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-900/70 p-3 rounded-2xl border border-slate-800 mb-5 text-center">
+                <div>
+                    <span class="block text-[10px] text-slate-400 uppercase">Tiempo</span>
+                    <span id="win-time-val" class="font-mono font-black text-emerald-400 text-base">00:15</span>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 uppercase">Quesitos Extra</span>
+                    <span id="win-crumbs-val" class="font-black text-yellow-400 text-base">3 / 3</span>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <button id="win-next-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-base shadow-lg hover:brightness-110 active:scale-95 transition">
+                    Siguiente Nivel <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+                <button id="win-select-btn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition">
+                    <i class="fa-solid fa-map mr-1.5 text-amber-400"></i> Ver Todos los Niveles
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div id="gameover-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+        <div class="glass-panel border-rose-500/50 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-3 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center justify-center text-3xl">
+                🐱💥
+            </div>
+            <h2 class="text-2xl font-black text-rose-400 mb-1">¡Te Atrapó el Gato!</h2>
+            <p class="text-xs text-slate-300 mb-5">Has perdido todas tus vidas en las sombras del laberinto.</p>
+            <div class="space-y-2">
+                <button id="retry-btn" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 text-white font-black text-base shadow-lg hover:brightness-110 active:scale-95 transition">
+                    <i class="fa-solid fa-rotate-left mr-2"></i> Reintentar Nivel
+                </button>
+                <button id="gameover-select-btn" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition">
+                    Seleccionar Nivel
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ==========================================================================
+   WEB AUDIO API SOUND SYNTHESIZER
+   ========================================================================== */
+class AudioSynth {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.musicPlaying = false;
+        this.musicTimer = null;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playSqueak() {
+        if (this.muted || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(850, now);
+            osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+            osc.frequency.exponentialRampToValueAtTime(950, now + 0.16);
+
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        } catch(e) {}
+    }
+
+    playCrumbEat() {
+        if (this.muted || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.14);
+        } catch(e) {}
+    }
+
+    playNitroSound() {
+        if (this.muted || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, now);
+            osc.frequency.exponentialRampToValueAtTime(260, now + 0.15);
+
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        } catch(e) {}
+    }
+
+    playHurt() {
+        if (this.muted || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.exponentialRampToValueAtTime(90, now + 0.25);
+
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.28);
+        } catch(e) {}
+    }
+
+    playWinFanfare() {
+        if (this.muted || !this.ctx) return;
+        try {
+            const notes = [440, 554.37, 659.25, 880];
+            notes.forEach((freq, idx) => {
+                const now = this.ctx.currentTime + idx * 0.11;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            });
+        } catch(e) {}
+    }
+}
+
+const audio = new AudioSynth();
+
+/* ==========================================================================
+   PROCEDURAL TEXTURES (Inspired by the stone castle maze image)
+   ========================================================================== */
+function createMedievalStoneTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Base stone mortar color
+    ctx.fillStyle = '#26292b';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const rows = 8;
+    const blockH = 512 / rows;
+
+    for (let r = 0; r < rows; r++) {
+        const offset = (r % 2) * 32;
+        const blockW = 64;
+        for (let x = -offset; x < 512 + blockW; x += blockW) {
+            // Random variation of ancient grey-greenish stone
+            const shade = 105 + Math.floor(Math.random() * 45);
+            const mossy = Math.random() > 0.65;
+            const rVal = shade - (mossy ? 15 : 0);
+            const gVal = shade + (mossy ? 18 : 0);
+            const bVal = shade - 10;
+            ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
+
+            const pad = 3;
+            ctx.fillRect(x + pad, r * blockH + pad, blockW - pad * 2, blockH - pad * 2);
+
+            // Add stone grain noise
+            for (let i = 0; i < 40; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.12)';
+                ctx.fillRect(x + pad + Math.random() * (blockW - pad * 2), r * blockH + pad + Math.random() * (blockH - pad * 2), 2, 2);
+            }
+        }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+}
+
+function createCobblestoneFloorTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Dark dirt gap
+    ctx.fillStyle = '#1c1b18';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const size = 32;
+    for (let y = 0; y < 512; y += size) {
+        for (let x = 0; x < 512; x += size) {
+            const shiftX = (Math.random() - 0.5) * 4;
+            const shiftY = (Math.random() - 0.5) * 4;
+            const stoneLum = 60 + Math.floor(Math.random() * 40);
+            ctx.fillStyle = `rgb(${stoneLum}, ${stoneLum + 2}, ${stoneLum - 4})`;
+            ctx.beginPath();
+            ctx.roundRect(x + 2 + shiftX, y + 2 + shiftY, size - 4, size - 4, [6]);
+            ctx.fill();
+
+            // Highlight top-left
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(4, 4);
+    return texture;
+}
+
+/* ==========================================================================
+   LEVELS & WORLDS CONFIGURATION (50 Dynamic Progressive Levels)
+   ========================================================================== */
+const WORLDS = [
+    {
+        id: 1,
+        name: "Mazmorras del Castillo",
+        tag: "Castillo",
+        range: [1, 10],
+        wallTint: 0x94a3b8,
+        floorTint: 0x334155,
+        desc: "Muros de piedra ancestral con musgo y pasillos amplios"
+    },
+    {
+        id: 2,
+        name: "Las Catacumbas Secretas",
+        tag: "Catacumbas",
+        range: [11, 20],
+        wallTint: 0x78716c,
+        floorTint: 0x292524,
+        desc: "Pasadizos misteriosos y sombras donde rondan guardianes felinos"
+    },
+    {
+        id: 3,
+        name: "La Gran Despensa Real",
+        tag: "Despensa",
+        range: [21, 30],
+        wallTint: 0xb45309,
+        floorTint: 0x451a03,
+        desc: "El aroma a queso curado atrae a más gatos vigías"
+    },
+    {
+        id: 4,
+        name: "El Laberinto de los Jardines",
+        tag: "Jardín",
+        range: [31, 40],
+        wallTint: 0x15803d,
+        floorTint: 0x14532d,
+        desc: "Corredores laberínticos con setos gigantes y patrullas ágiles"
+    },
+    {
+        id: 5,
+        name: "El Santuario Supremo Cósmico",
+        tag: "Santuario",
+        range: [41, 50],
+        wallTint: 0x0284c7,
+        floorTint: 0x0f172a,
+        desc: "La última prueba para consagrarte como el Rey de los Ratones"
+    }
+];
+
+function generateLevelsList() {
+    const list = [];
+    for (let i = 1; i <= 50; i++) {
+        const world = WORLDS.find(w => i >= w.range[0] && i <= w.range[1]) || WORLDS[4];
+        const step = Math.floor((i - 1) / 5);
+        const dimension = Math.min(21, 7 + step * 2); // 7x7 up to 21x21
+        const enemyCount = Math.min(5, Math.max(1, Math.floor(i / 10) + 1));
+        const enemySpeed = +(1.6 + (i / 50) * 1.4).toFixed(2);
+        const parTime = 12 + Math.floor(dimension * 1.8);
+
+        list.push({
+            id: i,
+            worldId: world.id,
+            worldName: world.name,
+            title: `Nivel ${i} - ${world.name}`,
+            rows: dimension,
+            cols: dimension,
+            wallTint: world.wallTint,
+            floorTint: world.floorTint,
+            enemyCount: enemyCount,
+            enemySpeed: enemySpeed,
+            parTime: parTime,
+            crumbCount: 3
+        });
+    }
+    return list;
+}
+
+const ALL_LEVELS = generateLevelsList();
+
+class ProgressManager {
+    constructor() {
+        this.STORAGE_KEY = 'mouse_maze_progress_v2';
+        this.data = this.load();
+    }
+
+    load() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                return JSON.parse(raw);
+            }
+        } catch(e) {}
+        return {
+            unlockedLevel: 1,
+            levels: {}, // { [levelId]: { stars: 3, bestTime: 14 } }
+            totalCrumbs: 0
+        };
+    }
+
+    save() {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+        } catch(e) {}
+    }
+
+    recordWin(levelId, stars, time, crumbsCollected) {
+        if (!this.data.levels[levelId]) {
+            this.data.levels[levelId] = { stars: 0, bestTime: 999 };
+        }
+        const current = this.data.levels[levelId];
+        current.stars = Math.max(current.stars, stars);
+        current.bestTime = Math.min(current.bestTime, time);
+        this.data.totalCrumbs += crumbsCollected;
+
+        if (levelId >= this.data.unlockedLevel && levelId < 50) {
+            this.data.unlockedLevel = levelId + 1;
+        }
+        this.save();
+    }
+
+    getTotalStars() {
+        let stars = 0;
+        for (let key in this.data.levels) {
+            stars += (this.data.levels[key].stars || 0);
+        }
+        return stars;
+    }
+
+    reset() {
+        this.data = { unlockedLevel: 1, levels: {}, totalCrumbs: 0 };
+        this.save();
+    }
+}
+
+const progress = new ProgressManager();
+
+/* ==========================================================================
+   MAZE GENERATOR (Depth-First Search Recursive Backtracker)
+   ========================================================================== */
+function createMazeGrid(rows, cols) {
+    const grid = [];
+    for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+            grid[r][c] = 1; // 1 = Wall, 0 = Path
+        }
+    }
+
+    function carve(r, c) {
+        grid[r][c] = 0;
+        const dirs = [
+            [-2, 0], [2, 0], [0, -2], [0, 2]
+        ].sort(() => Math.random() - 0.5);
+
+        for (let [dr, dc] of dirs) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr > 0 && nr < rows - 1 && nc > 0 && nc < cols - 1) {
+                if (grid[nr][nc] === 1) {
+                    grid[r + dr / 2][c + dc / 2] = 0;
+                    carve(nr, nc);
+                }
+            }
+        }
+    }
+
+    carve(1, 1);
+    grid[1][1] = 0; // Mouse start
+    grid[rows - 2][cols - 2] = 0; // Cheese goal
+
+    return { grid, rows, cols };
+}
+
+/* ==========================================================================
+   3D PROCEDURAL MODELS (Mouse, Cheese, Cat, Wall Torches)
+   ========================================================================== */
+function createWhiteMouseMesh() {
+    const group = new THREE.Group();
+
+    // White fur material
+    const furMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.6,
+        metalness: 0.05
+    });
+    // Pinkish nose and ears
+    const innerPinkMat = new THREE.MeshStandardMaterial({
+        color: 0xfda4af,
+        roughness: 0.7
+    });
+    // Ruby Albino Eyes (like the reference photo)
+    const eyeMat = new THREE.MeshStandardMaterial({
+        color: 0x991b1b,
+        roughness: 0.2,
+        metalness: 0.6
+    });
+
+    // Body
+    const bodyGeo = new THREE.SphereGeometry(0.32, 16, 16);
+    bodyGeo.scale(0.85, 0.75, 1.25);
+    const body = new THREE.Mesh(bodyGeo, furMat);
+    body.position.y = 0.26;
+    body.castShadow = true;
+    group.add(body);
+
+    // Head
+    const headGeo = new THREE.ConeGeometry(0.22, 0.38, 16);
+    headGeo.rotateX(Math.PI / 2);
+    const head = new THREE.Mesh(headGeo, furMat);
+    head.position.set(0, 0.28, 0.34);
+    group.add(head);
+
+    // Pink Snout / Nose
+    const noseGeo = new THREE.SphereGeometry(0.045, 12, 12);
+    const nose = new THREE.Mesh(noseGeo, innerPinkMat);
+    nose.position.set(0, 0.28, 0.54);
+    group.add(nose);
+
+    // Ruby Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.038, 10, 10);
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(0.11, 0.34, 0.36);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = -0.11;
+    group.add(leftEye);
+    group.add(rightEye);
+
+    // Ears
+    const earOuterGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.03, 16);
+    earOuterGeo.rotateX(Math.PI / 2);
+    const earInnerGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.035, 16);
+    earInnerGeo.rotateX(Math.PI / 2);
+
+    const leftEar = new THREE.Group();
+    leftEar.add(new THREE.Mesh(earOuterGeo, furMat));
+    leftEar.add(new THREE.Mesh(earInnerGeo, innerPinkMat));
+    leftEar.position.set(0.18, 0.44, 0.18);
+    leftEar.rotation.set(0.2, 0.3, -0.2);
+
+    const rightEar = leftEar.clone();
+    rightEar.position.x = -0.18;
+    rightEar.rotation.set(0.2, -0.3, 0.2);
+    group.add(leftEar);
+    group.add(rightEar);
+
+    // Tail
+    const tailCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, 0.2, -0.35),
+        new THREE.Vector3(0.08, 0.3, -0.65),
+        new THREE.Vector3(-0.06, 0.42, -0.9)
+    );
+    const tailGeo = new THREE.TubeGeometry(tailCurve, 12, 0.024, 8, false);
+    const tail = new THREE.Mesh(tailGeo, innerPinkMat);
+    tail.name = "tail";
+    group.add(tail);
+
+    // DUAL CHROME EXHAUST PIPE (Tubo de escape nitro)
+    const chromeMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.9,
+        roughness: 0.15
+    });
+    const exhaustNozzleMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+
+    const exhaustGroup = new THREE.Group();
+    exhaustGroup.position.set(0, 0.38, -0.15);
+
+    [-0.11, 0.11].forEach(xOffset => {
+        const pipeGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.24, 12);
+        pipeGeo.rotateX(-Math.PI / 3);
+        const pipe = new THREE.Mesh(pipeGeo, chromeMat);
+        pipe.position.set(xOffset, 0, -0.1);
+
+        const tipRing = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 8, 16), exhaustNozzleMat);
+        tipRing.position.set(xOffset, 0.06, -0.2);
+        tipRing.rotation.x = Math.PI / 6;
+
+        exhaustGroup.add(pipe);
+        exhaustGroup.add(tipRing);
+    });
+    group.add(exhaustGroup);
+
+    return group;
+}
+
+function createCheeseWedge(isMainGoal = true) {
+    const group = new THREE.Group();
+    const cheeseMat = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        roughness: 0.4,
+        metalness: 0.05
+    });
+
+    const scale = isMainGoal ? 1.0 : 0.45;
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(0.55 * scale, 0);
+    shape.lineTo(0, 0.95 * scale);
+    shape.closePath();
+
+    const extrudeSettings = { depth: 0.35 * scale, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.03 * scale, bevelThickness: 0.03 * scale };
+    const wedgeGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    wedgeGeo.center();
+    const wedge = new THREE.Mesh(wedgeGeo, cheeseMat);
+    wedge.rotation.x = -Math.PI / 2;
+    group.add(wedge);
+
+    // Cheese holes (dimples)
+    const holeMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
+    const holeGeo = new THREE.SphereGeometry(0.07 * scale, 8, 8);
+    [
+        [0.1 * scale, 0.08 * scale, 0.1 * scale],
+        [-0.1 * scale, -0.05 * scale, -0.08 * scale],
+        [0.05 * scale, -0.09 * scale, 0.12 * scale]
+    ].forEach(pos => {
+        const h = new THREE.Mesh(holeGeo, holeMat);
+        h.position.set(...pos);
+        group.add(h);
+    });
+
+    group.castShadow = true;
+    return group;
+}
+
+function createCatPatrolMesh() {
+    const group = new THREE.Group();
+    const coatMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    const collarMat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
+
+    // Body
+    const bodyGeo = new THREE.CylinderGeometry(0.24, 0.28, 0.65, 12);
+    bodyGeo.rotateX(Math.PI / 2);
+    const body = new THREE.Mesh(bodyGeo, coatMat);
+    body.position.y = 0.32;
+    body.castShadow = true;
+    group.add(body);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 14), coatMat);
+    head.position.set(0, 0.44, 0.38);
+    group.add(head);
+
+    // Ears
+    const earGeo = new THREE.ConeGeometry(0.09, 0.18, 4);
+    const leftEar = new THREE.Mesh(earGeo, coatMat);
+    leftEar.position.set(0.14, 0.65, 0.36);
+    const rightEar = leftEar.clone();
+    rightEar.position.x = -0.14;
+    group.add(leftEar);
+    group.add(rightEar);
+
+    // Glowing Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.045, 8, 8);
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(0.1, 0.48, 0.58);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = -0.1;
+    group.add(leftEye);
+    group.add(rightEye);
+
+    // Collar
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 16), collarMat);
+    collar.position.set(0, 0.38, 0.24);
+    group.add(collar);
+
+    return group;
+}
+
+/* ==========================================================================
+   GAME APP CONTROLLER
+   ========================================================================== */
+class MouseMazeApp {
+    constructor() {
+        this.cellSize = 2.0;
+        this.currentLevelIdx = 0;
+        this.isOverviewCam = true;
+        this.lives = 3;
+        this.nitro = 100;
+        this.maxNitro = 100;
+        this.levelActive = false;
+        this.isPaused = false;
+        this.crumbsCollected = 0;
+        this.timerSeconds = 0;
+        this.timerInterval = null;
+        this.invulnerableTimer = 0;
+
+        // Player physics
+        this.playerPos = new THREE.Vector2(1, 1);
+        this.playerAngle = 0;
+        this.playerVelocity = new THREE.Vector2(0, 0);
+
+        // Keys state
+        this.keys = { up: false, down: false, left: false, right: false, turbo: false };
+
+        // Cached materials
+        this.stoneTexture = createMedievalStoneTexture();
+        this.floorTexture = createCobblestoneFloorTexture();
+
+        // Arrays
+        this.enemies = [];
+        this.crumbs = [];
+        this.particles = [];
+
+        this.initEngine();
+        this.bindEvents();
+        this.updateMenuHUD();
+    }
+
+    initEngine() {
+        const container = document.getElementById('canvas-container');
+
+        // Scene
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x0a0c10);
+        this.scene.fog = new THREE.Fog(0x0a0c10, 50, 200);
+
+        // Camera
+        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+        this.camera.position.set(0, 30, 0);
+
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(this.renderer.domElement);
+
+        // Lights
+        this.ambientLight = new THREE.AmbientLight(0xfff7ed, 0.85);
+        this.scene.add(this.ambientLight);
+
+        this.dirLight = new THREE.DirectionalLight(0xffedd5, 0.95);
+        this.dirLight.position.set(15, 35, 15);
+        this.dirLight.castShadow = true;
+        this.dirLight.shadow.mapSize.set(1024, 1024);
+        this.scene.add(this.dirLight);
+
+        // Groups
+        this.wallsGroup = new THREE.Group();
+        this.crumbsGroup = new THREE.Group();
+        this.enemiesGroup = new THREE.Group();
+        this.particlesGroup = new THREE.Group();
+        this.scene.add(this.wallsGroup);
+        this.scene.add(this.crumbsGroup);
+        this.scene.add(this.enemiesGroup);
+        this.scene.add(this.particlesGroup);
+
+        // Player White Mouse 3D
+        this.mouseObj = createWhiteMouseMesh();
+        this.scene.add(this.mouseObj);
+
+        // Big Cheese Goal
+        this.mainCheeseObj = createCheeseWedge(true);
+        this.cheesePointLight = new THREE.PointLight(0xfbbf24, 1.8, 6);
+        this.mainCheeseObj.add(this.cheesePointLight);
+        this.scene.add(this.mainCheeseObj);
+
+        window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    startLevel(levelNumber) {
+        const lvlData = ALL_LEVELS[levelNumber - 1];
+        if (!lvlData) return;
+
+        this.currentLevelIdx = levelNumber - 1;
+
+        // Clear scene groups
+        while (this.wallsGroup.children.length > 0) this.wallsGroup.remove(this.wallsGroup.children[0]);
+        while (this.crumbsGroup.children.length > 0) this.crumbsGroup.remove(this.crumbsGroup.children[0]);
+        while (this.enemiesGroup.children.length > 0) this.enemiesGroup.remove(this.enemiesGroup.children[0]);
+        this.enemies = [];
+        this.crumbs = [];
+
+        // Build procedural maze
+        const maze = createMazeGrid(lvlData.rows, lvlData.cols);
+        this.currentMaze = maze.grid;
+        this.mazeRows = maze.rows;
+        this.mazeCols = maze.cols;
+
+        // Construct 3D environment
+        this.buildMaze3D(lvlData);
+
+        // Reset player state
+        this.playerPos.set(1, 1);
+        const startW = this.gridToWorld(1, 1);
+        this.mouseObj.position.set(startW.x, 0, startW.z);
+        this.playerVelocity.set(0, 0);
+
+        // Position Cheese Goal (at rows - 2, cols - 2)
+        const goalW = this.gridToWorld(this.mazeCols - 2, this.mazeRows - 2);
+        this.mainCheeseObj.position.set(goalW.x, 0.45, goalW.z);
+
+        // Spawn Extra Crumbs
+        this.spawnExtraCrumbs(lvlData.crumbCount);
+
+        // Spawn Cat Patrol Enemies
+        this.spawnEnemies(lvlData.enemyCount, lvlData.enemySpeed);
+
+        // Reset stats
+        this.lives = 3;
+        this.nitro = this.maxNitro;
+        this.crumbsCollected = 0;
+        this.invulnerableTimer = 0;
+        this.updateHUDStats();
+
+        document.getElementById('hud-level-tag').innerText = `Nivel ${lvlData.id}`;
+        document.getElementById('hud-level-name').innerText = `• ${lvlData.title}`;
+
+        // Reset timer
+        this.timerSeconds = 0;
+        this.updateTimerText();
+        clearInterval(this.timerInterval);
+        this.timerInterval = setInterval(() => {
+            if (this.levelActive && !this.isPaused) {
+                this.timerSeconds++;
+                this.updateTimerText();
+            }
+        }, 1000);
+
+        this.levelActive = true;
+        this.isPaused = false;
+
+        // Ensure overhead camera encompasses the entire board
+        this.snapCameraToOverview();
+        audio.playSqueak();
+    }
+
+    buildMaze3D(lvlData) {
+        const wallMat = new THREE.MeshStandardMaterial({
+            map: this.stoneTexture,
+            color: lvlData.wallTint,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const wallGeo = new THREE.BoxGeometry(this.cellSize, 1.8, this.cellSize);
+
+        for (let r = 0; r < this.mazeRows; r++) {
+            for (let c = 0; c < this.mazeCols; c++) {
+                if (this.currentMaze[r][c] === 1) {
+                    const pos = this.gridToWorld(c, r);
+                    const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+                    wallMesh.position.set(pos.x, 0.9, pos.z);
+                    wallMesh.castShadow = true;
+                    wallMesh.receiveShadow = true;
+                    this.wallsGroup.add(wallMesh);
+                }
+            }
+        }
+
+        // Floor Board
+        const boardW = this.mazeCols * this.cellSize;
+        const boardH = this.mazeRows * this.cellSize;
+        const floorGeo = new THREE.PlaneGeometry(boardW, boardH);
+        const floorMat = new THREE.MeshStandardMaterial({
+            map: this.floorTexture,
+            color: lvlData.floorTint,
+            roughness: 0.85
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        this.wallsGroup.add(floor);
+
+        // Outer Decorative Wooden Border
+        const frameGeo = new THREE.BoxGeometry(boardW + 1.2, 0.4, boardH + 1.2);
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e1b18, roughness: 0.9 });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        frame.position.y = -0.2;
+        this.wallsGroup.add(frame);
+    }
+
+    spawnExtraCrumbs(count) {
+        let placed = 0;
+        const attempts = 150;
+        for (let i = 0; i < attempts && placed < count; i++) {
+            const r = Math.floor(Math.random() * (this.mazeRows - 2)) + 1;
+            const c = Math.floor(Math.random() * (this.mazeCols - 2)) + 1;
+            if (this.currentMaze[r][c] === 0 && !(r === 1 && c === 1) && !(r === this.mazeRows - 2 && c === this.mazeCols - 2)) {
+                const crumbMesh = createCheeseWedge(false);
+                const pos = this.gridToWorld(c, r);
+                crumbMesh.position.set(pos.x, 0.28, pos.z);
+                this.crumbsGroup.add(crumbMesh);
+                this.crumbs.push({ mesh: crumbMesh, col: c, row: r, collected: false });
+                placed++;
+            }
+        }
+        document.getElementById('crumbs-total-text').innerText = placed;
+        document.getElementById('crumbs-found-text').innerText = '0';
+    }
+
+    spawnEnemies(count, speed) {
+        for (let i = 0; i < count; i++) {
+            let placed = false;
+            while (!placed) {
+                const r = Math.floor(Math.random() * (this.mazeRows - 2)) + 1;
+                const c = Math.floor(Math.random() * (this.mazeCols - 2)) + 1;
+                const distToStart = Math.hypot(c - 1, r - 1);
+                if (this.currentMaze[r][c] === 0 && distToStart > 4) {
+                    const catObj = createCatPatrolMesh();
+                    const w = this.gridToWorld(c, r);
+                    catObj.position.set(w.x, 0, w.z);
+                    this.enemiesGroup.add(catObj);
+
+                    this.enemies.push({
+                        mesh: catObj,
+                        gridPos: new THREE.Vector2(c, r),
+                        worldPos: new THREE.Vector2(w.x, w.z),
+                        targetGrid: new THREE.Vector2(c, r),
+                        speed: speed * 1.6,
+                        dir: new THREE.Vector2(1, 0)
+                    });
+                    placed = true;
+                }
+            }
+        }
+    }
+
+    gridToWorld(col, row) {
+        const x = (col - (this.mazeCols - 1) / 2) * this.cellSize;
+        const z = (row - (this.mazeRows - 1) / 2) * this.cellSize;
+        return { x, z };
+    }
+
+    snapCameraToOverview() {
+        if (!this.isOverviewCam) return;
+        const boardW = this.mazeCols * this.cellSize;
+        const boardH = this.mazeRows * this.cellSize;
+        const aspect = window.innerWidth / window.innerHeight;
+        const fovRad = (this.camera.fov * Math.PI) / 180;
+
+        const distanceForHeight = (boardH / 2 + 3.0) / Math.tan(fovRad / 2);
+        const distanceForWidth = (boardW / 2 + 3.0) / (Math.tan(fovRad / 2) * aspect);
+        const targetY = Math.max(distanceForHeight, distanceForWidth, 18);
+
+        this.camera.position.set(0, targetY, 0.01);
+        this.camera.lookAt(0, 0, 0);
+    }
+
+    toggleCameraView() {
+        this.isOverviewCam = !this.isOverviewCam;
+        const icon = document.getElementById('cam-icon');
+        if (this.isOverviewCam) {
+            icon.className = 'fa-solid fa-street-view text-amber-400';
+            this.snapCameraToOverview();
+        } else {
+            icon.className = 'fa-solid fa-table-cells text-amber-400';
+        }
+    }
+
+    onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        if (this.isOverviewCam) {
+            this.snapCameraToOverview();
+        }
+    }
+
+    update(delta) {
+        if (!this.levelActive || this.isPaused) return;
+
+        // Animate goal cheese and crumbs
+        if (this.mainCheeseObj) {
+            this.mainCheeseObj.rotation.y += delta * 1.5;
+            this.mainCheeseObj.position.y = 0.45 + Math.sin(Date.now() * 0.004) * 0.12;
+        }
+        this.crumbs.forEach(c => {
+            if (!c.collected && c.mesh) {
+                c.mesh.rotation.y += delta * 2.2;
+            }
+        });
+
+        // Invulnerability flicker
+        if (this.invulnerableTimer > 0) {
+            this.invulnerableTimer -= delta;
+            this.mouseObj.visible = Math.floor(Date.now() / 80) % 2 === 0;
+            if (this.invulnerableTimer <= 0) {
+                this.mouseObj.visible = true;
+            }
+        }
+
+        // Handle Player Movement Input
+        let moveX = 0;
+        let moveZ = 0;
+        if (this.keys.up) moveZ -= 1;
+        if (this.keys.down) moveZ += 1;
+        if (this.keys.left) moveX -= 1;
+        if (this.keys.right) moveX += 1;
+
+        const isMoving = moveX !== 0 || moveZ !== 0;
+
+        // Nitro boost calculation
+        let speedMultiplier = 1.0;
+        if (this.keys.turbo && this.nitro > 0 && isMoving) {
+            speedMultiplier = 2.1;
+            this.nitro = Math.max(0, this.nitro - delta * 45);
+            audio.playNitroSound();
+            this.spawnExhaustFlameParticle();
+        } else {
+            this.nitro = Math.min(this.maxNitro, this.nitro + delta * 25);
+            if (isMoving) this.spawnExhaustSmokeParticle();
+        }
+        document.getElementById('nitro-fill').style.width = `${(this.nitro / this.maxNitro) * 100}%`;
+
+        const baseSpeed = 4.2 * speedMultiplier;
+        const inputDir = new THREE.Vector2(moveX, moveZ);
+        if (inputDir.lengthSq() > 0) inputDir.normalize();
+
+        const moveStep = inputDir.multiplyScalar(baseSpeed * delta);
+        this.movePlayerWithCollision(moveStep);
+
+        // Update Mouse Rotation and Trot
+        if (isMoving) {
+            const targetAngle = Math.atan2(moveX, moveZ);
+            this.playerAngle = targetAngle;
+            this.mouseObj.rotation.y = this.playerAngle;
+            this.mouseObj.position.y = Math.abs(Math.sin(Date.now() * 0.016 * speedMultiplier)) * 0.08;
+
+            const tail = this.mouseObj.getObjectByName('tail');
+            if (tail) tail.rotation.y = Math.sin(Date.now() * 0.02) * 0.35;
+        }
+
+        // Update Cat Enemies
+        this.updateEnemies(delta);
+
+        // Check Collectibles and Goal
+        this.checkCollisions();
+
+        // Update Dynamic Camera
+        if (!this.isOverviewCam) {
+            const camTarget = new THREE.Vector3(
+                this.mouseObj.position.x - Math.sin(this.playerAngle) * 5.0,
+                3.8,
+                this.mouseObj.position.z - Math.cos(this.playerAngle) * 5.0
+            );
+            this.camera.position.lerp(camTarget, 0.1);
+            this.camera.lookAt(this.mouseObj.position.x, 0.4, this.mouseObj.position.z);
+        }
+
+        // Update Particle System
+        this.updateParticles(delta);
+
+        // Update Radar Canvas
+        this.drawMinimap();
+    }
+
+    movePlayerWithCollision(moveStep) {
+        const radius = 0.45;
+        const currentWorld = new THREE.Vector2(this.mouseObj.position.x, this.mouseObj.position.z);
+
+        // Try X Movement
+        const nextX = currentWorld.x + moveStep.x;
+        if (!this.isCircleCollidingWithWalls(nextX, currentWorld.y, radius)) {
+            currentWorld.x = nextX;
+        }
+
+        // Try Z Movement
+        const nextZ = currentWorld.y + moveStep.y;
+        if (!this.isCircleCollidingWithWalls(currentWorld.x, nextZ, radius)) {
+            currentWorld.y = nextZ;
+        }
+
+        this.mouseObj.position.x = currentWorld.x;
+        this.mouseObj.position.z = currentWorld.y;
+
+        // Approximate player grid coordinates
+        this.playerPos.x = ((currentWorld.x / this.cellSize) + (this.mazeCols - 1) / 2);
+        this.playerPos.y = ((currentWorld.y / this.cellSize) + (this.mazeRows - 1) / 2);
+    }
+
+    isCircleCollidingWithWalls(wx, wz, r) {
+        const minCol = Math.floor(((wx - r) / this.cellSize) + (this.mazeCols - 1) / 2);
+        const maxCol = Math.floor(((wx + r) / this.cellSize) + (this.mazeCols - 1) / 2);
+        const minRow = Math.floor(((wz - r) / this.cellSize) + (this.mazeRows - 1) / 2);
+        const maxRow = Math.floor(((wz + r) / this.cellSize) + (this.mazeRows - 1) / 2);
+
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                if (row < 0 || row >= this.mazeRows || col < 0 || col >= this.mazeCols || this.currentMaze[row][col] === 1) {
+                    const wallCenter = this.gridToWorld(col, row);
+                    const closestX = Math.max(wallCenter.x - this.cellSize / 2, Math.min(wx, wallCenter.x + this.cellSize / 2));
+                    const closestZ = Math.max(wallCenter.z - this.cellSize / 2, Math.min(wz, wallCenter.z + this.cellSize / 2));
+                    const distX = wx - closestX;
+                    const distZ = wz - closestZ;
+                    if ((distX * distX + distZ * distZ) < (r * r)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    updateEnemies(delta) {
+        this.enemies.forEach(cat => {
+            const currentWorld = new THREE.Vector2(cat.mesh.position.x, cat.mesh.position.z);
+            const targetWorldPos = this.gridToWorld(cat.targetGrid.x, cat.targetGrid.y);
+            const toTarget = new THREE.Vector2(targetWorldPos.x - currentWorld.x, targetWorldPos.z - currentWorld.y);
+            const dist = toTarget.length();
+
+            if (dist < 0.1) {
+                cat.gridPos.copy(cat.targetGrid);
+
+                // Choose next corridor direction at grid intersection
+                const neighbors = [
+                    { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+                ].filter(d => {
+                    const nc = cat.gridPos.x + d.x;
+                    const nr = cat.gridPos.y + d.y;
+                    return nr >= 0 && nr < this.mazeRows && nc >= 0 && nc < this.mazeCols && this.currentMaze[nr][nc] === 0;
+                });
+
+                // Prefer continuing straight or picking an open path
+                const forward = neighbors.find(d => d.x === cat.dir.x && d.y === cat.dir.y);
+                const pick = (forward && Math.random() > 0.4) ? forward : neighbors[Math.floor(Math.random() * neighbors.length)];
+
+                if (pick) {
+                    cat.dir.set(pick.x, pick.y);
+                    cat.targetGrid.set(cat.gridPos.x + pick.x, cat.gridPos.y + pick.y);
+                }
+            } else {
+                toTarget.normalize();
+                cat.mesh.position.x += toTarget.x * cat.speed * delta;
+                cat.mesh.position.z += toTarget.y * cat.speed * delta;
+                cat.mesh.rotation.y = Math.atan2(toTarget.x, toTarget.y);
+            }
+
+            // Check collision with mouse
+            if (this.invulnerableTimer <= 0) {
+                const distToPlayer = Math.hypot(cat.mesh.position.x - this.mouseObj.position.x, cat.mesh.position.z - this.mouseObj.position.z);
+                if (distToPlayer < 0.75) {
+                    this.onPlayerHitByCat();
+                }
+            }
+        });
+    }
+
+    onPlayerHitByCat() {
+        this.lives--;
+        this.invulnerableTimer = 2.0;
+        audio.playHurt();
+
+        // Damage red flash
+        const flash = document.getElementById('damage-flash');
+        flash.classList.add('screen-flash-damage');
+        setTimeout(() => flash.classList.remove('screen-flash-damage'), 350);
+
+        this.updateLivesDisplay();
+
+        if (this.lives <= 0) {
+            this.levelActive = false;
+            document.getElementById('gameover-modal').classList.remove('hidden');
+        } else {
+            // Relocate mouse to start corridor safely
+            const startW = this.gridToWorld(1, 1);
+            this.mouseObj.position.set(startW.x, 0, startW.z);
+        }
+    }
+
+    checkCollisions() {
+        const pWorld = new THREE.Vector2(this.mouseObj.position.x, this.mouseObj.position.z);
+
+        // Check Extra Cheese Crumbs
+        this.crumbs.forEach(crumb => {
+            if (!crumb.collected) {
+                const cWorld = this.gridToWorld(crumb.col, crumb.row);
+                if (pWorld.distanceTo(new THREE.Vector2(cWorld.x, cWorld.z)) < 0.75) {
+                    crumb.collected = true;
+                    this.crumbsGroup.remove(crumb.mesh);
+                    this.crumbsCollected++;
+                    audio.playCrumbEat();
+                    document.getElementById('crumbs-found-text').innerText = this.crumbsCollected;
+                }
+            }
+        });
+
+        // Check Big Goal Cheese
+        const goalW = this.mainCheeseObj.position;
+        if (pWorld.distanceTo(new THREE.Vector2(goalW.x, goalW.z)) < 0.85) {
+            this.onLevelVictory();
+        }
+    }
+
+    onLevelVictory() {
+        this.levelActive = false;
+        clearInterval(this.timerInterval);
+        audio.playWinFanfare();
+
+        const currentLvl = ALL_LEVELS[this.currentLevelIdx];
+        
+        // Calculate Stars:
+        // 1 Star: Reaching the cheese goal
+        // 2 Stars: Reaching within par time
+        // 3 Stars: Reaching within par time AND collecting all 3 crumbs
+        let stars = 1;
+        if (this.timerSeconds <= currentLvl.parTime) stars++;
+        if (this.crumbsCollected >= currentLvl.crumbCount) stars++;
+
+        // Save in storage
+        progress.recordWin(currentLvl.id, stars, this.timerSeconds, this.crumbsCollected);
+
+        // Update modal UI
+        document.getElementById('win-time-val').innerText = this.formatTime(this.timerSeconds);
+        document.getElementById('win-crumbs-val').innerText = `${this.crumbsCollected} / ${currentLvl.crumbCount}`;
+
+        for (let s = 1; s <= 3; s++) {
+            const starElem = document.getElementById(`win-star-${s}`);
+            starElem.className = s <= stars ? 'fa-solid fa-star star-gold' : 'fa-solid fa-star star-gray';
+        }
+
+        document.getElementById('win-modal').classList.remove('hidden');
+    }
+
+    spawnExhaustSmokeParticle() {
+        const pGeo = new THREE.SphereGeometry(0.06, 6, 6);
+        const pMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.65 });
+        const mesh = new THREE.Mesh(pGeo, pMat);
+
+        const worldPos = new THREE.Vector3();
+        this.mouseObj.getWorldPosition(worldPos);
+        mesh.position.set(
+            worldPos.x - Math.sin(this.playerAngle) * 0.35 + (Math.random() - 0.5) * 0.1,
+            0.35,
+            worldPos.z - Math.cos(this.playerAngle) * 0.35 + (Math.random() - 0.5) * 0.1
+        );
+        this.particlesGroup.add(mesh);
+        this.particles.push({ mesh, velY: 0.4, life: 0.45, maxLife: 0.45 });
+    }
+
+    spawnExhaustFlameParticle() {
+        const colors = [0xf97316, 0xfacc15, 0xef4444, 0x38bdf8];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const pGeo = new THREE.SphereGeometry(0.09, 6, 6);
+        const pMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9 });
+        const mesh = new THREE.Mesh(pGeo, pMat);
+
+        const worldPos = new THREE.Vector3();
+        this.mouseObj.getWorldPosition(worldPos);
+        mesh.position.set(
+            worldPos.x - Math.sin(this.playerAngle) * 0.4,
+            0.38 + (Math.random() - 0.5) * 0.08,
+            worldPos.z - Math.cos(this.playerAngle) * 0.4
+        );
+        this.particlesGroup.add(mesh);
+        this.particles.push({ mesh, velY: 0.6, life: 0.35, maxLife: 0.35 });
+    }
+
+    updateParticles(delta) {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.life -= delta;
+            if (p.life <= 0) {
+                this.particlesGroup.remove(p.mesh);
+                this.particles.splice(i, 1);
+            } else {
+                p.mesh.position.y += p.velY * delta;
+                p.mesh.scale.multiplyScalar(0.96);
+                p.mesh.material.opacity = p.life / p.maxLife;
+            }
+        }
+    }
+
+    drawMinimap() {
+        const canvas = document.getElementById('minimap-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+        const cellPixelW = w / this.mazeCols;
+        const cellPixelH = h / this.mazeRows;
+
+        // Draw maze walls
+        ctx.fillStyle = '#1e293b';
+        for (let r = 0; r < this.mazeRows; r++) {
+            for (let c = 0; c < this.mazeCols; c++) {
+                if (this.currentMaze[r][c] === 1) {
+                    ctx.fillRect(c * cellPixelW, r * cellPixelH, cellPixelW, cellPixelH);
+                }
+            }
+        }
+
+        // Draw crumbs
+        ctx.fillStyle = '#facc15';
+        this.crumbs.forEach(crumb => {
+            if (!crumb.collected) {
+                ctx.beginPath();
+                ctx.arc((crumb.col + 0.5) * cellPixelW, (crumb.row + 0.5) * cellPixelH, cellPixelW * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+
+        // Draw Cheese Goal
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc((this.mazeCols - 1.5) * cellPixelW, (this.mazeRows - 1.5) * cellPixelH, cellPixelW * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Cats
+        ctx.fillStyle = '#ef4444';
+        this.enemies.forEach(cat => {
+            const cPos = ((cat.mesh.position.x / this.cellSize) + (this.mazeCols - 1) / 2);
+            const rPos = ((cat.mesh.position.z / this.cellSize) + (this.mazeRows - 1) / 2);
+            ctx.beginPath();
+            ctx.arc((cPos + 0.5) * cellPixelW, (rPos + 0.5) * cellPixelH, cellPixelW * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Draw White Mouse Player
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc((this.playerPos.x + 0.5) * cellPixelW, (this.playerPos.y + 0.5) * cellPixelH, cellPixelW * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    updateLivesDisplay() {
+        const hearts = [];
+        for (let i = 0; i < 3; i++) {
+            hearts.push(i < this.lives ? '<i class="fa-solid fa-heart mr-1 text-rose-400"></i>' : '<i class="fa-regular fa-heart mr-1 text-slate-600"></i>');
+        }
+        document.getElementById('hud-lives').innerHTML = hearts.join('');
+    }
+
+    updateHUDStats() {
+        this.updateLivesDisplay();
+        document.getElementById('crumbs-found-text').innerText = this.crumbsCollected;
+    }
+
+    updateTimerText() {
+        document.getElementById('timer-text').innerText = this.formatTime(this.timerSeconds);
+    }
+
+    formatTime(sec) {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    updateMenuHUD() {
+        document.getElementById('menu-current-lvl').innerText = progress.data.unlockedLevel;
+        document.getElementById('menu-total-stars').innerHTML = `<i class="fa-solid fa-star text-xs mr-1"></i>${progress.getTotalStars()}`;
+        document.getElementById('menu-total-crumbs').innerText = progress.data.totalCrumbs;
+    }
+
+    renderLevelSelectorGrid(filterWorld = 'all') {
+        const grid = document.getElementById('levels-grid');
+        const tabs = document.getElementById('world-tabs-container');
+        if (!grid || !tabs) return;
+
+        // Build tabs
+        tabs.innerHTML = `<button class="world-tab-btn active px-3 py-1.5 rounded-xl font-bold bg-amber-500 text-slate-950 shadow transition shrink-0" data-world="all">Todos (50)</button>` +
+            WORLDS.map(w => `<button class="world-tab-btn px-3 py-1.5 rounded-xl font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition shrink-0" data-world="${w.id}">M${w.id}: ${w.tag}</button>`).join('');
+
+        tabs.querySelectorAll('.world-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.querySelectorAll('.world-tab-btn').forEach(b => {
+                    b.className = 'world-tab-btn px-3 py-1.5 rounded-xl font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition shrink-0';
+                });
+                btn.className = 'world-tab-btn active px-3 py-1.5 rounded-xl font-bold bg-amber-500 text-slate-950 shadow transition shrink-0';
+                this.renderLevelSelectorGrid(btn.getAttribute('data-world'));
+            });
+        });
+
+        // Build Level Cards
+        grid.innerHTML = '';
+        ALL_LEVELS.forEach(lvl => {
+            if (filterWorld !== 'all' && lvl.worldId !== parseInt(filterWorld, 10)) return;
+
+            const isUnlocked = lvl.id <= progress.data.unlockedLevel;
+            const lvlProgress = progress.data.levels[lvl.id] || { stars: 0 };
+            const card = document.createElement('button');
+
+            card.className = `p-2.5 rounded-2xl flex flex-col items-center justify-between text-center transition border ${
+                isUnlocked
+                    ? 'bg-slate-900/90 hover:bg-slate-800 text-white border-amber-500/40 active:scale-95 shadow-md'
+                    : 'bg-slate-950/60 text-slate-600 border-slate-800/80 cursor-not-allowed'
+            }`;
+
+            let starsHtml = '';
+            for (let s = 1; s <= 3; s++) {
+                starsHtml += s <= lvlProgress.stars
+                    ? '<i class="fa-solid fa-star text-[10px] star-gold"></i>'
+                    : '<i class="fa-solid fa-star text-[10px] star-gray"></i>';
+            }
+
+            card.innerHTML = `
+                <div class="flex items-center justify-between w-full text-[10px] font-bold ${isUnlocked ? 'text-amber-400' : 'text-slate-600'}">
+                    <span>#${lvl.id}</span>
+                    ${isUnlocked ? `<span>${lvl.rows}x${lvl.cols}</span>` : '<i class="fa-solid fa-lock text-xs"></i>'}
+                </div>
+                <div class="my-1.5 text-lg font-black ${isUnlocked ? 'text-white' : 'text-slate-600'}">
+                    ${isUnlocked ? lvl.id : '<i class="fa-solid fa-shield-halved text-sm"></i>'}
+                </div>
+                <div class="flex space-x-0.5">
+                    ${isUnlocked ? starsHtml : ''}
+                </div>
+            `;
+
+            if (isUnlocked) {
+                card.addEventListener('click', () => {
+                    document.getElementById('level-select-modal').classList.add('hidden');
+                    document.getElementById('main-menu').classList.add('hidden');
+                    document.getElementById('game-hud').classList.remove('hidden');
+                    this.startLevel(lvl.id);
+                });
+            }
+
+            grid.appendChild(card);
+        });
+    }
+
+    bindEvents() {
+        // Keyboard
+        window.addEventListener('keydown', (e) => {
+            audio.init();
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': this.keys.up = true; break;
+                case 'KeyS': case 'ArrowDown': this.keys.down = true; break;
+                case 'KeyA': case 'ArrowLeft': this.keys.left = true; break;
+                case 'KeyD': case 'ArrowRight': this.keys.right = true; break;
+                case 'Space': case 'ShiftLeft': case 'ShiftRight':
+                    this.keys.turbo = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyC': this.toggleCameraView(); break;
+                case 'Escape': case 'KeyP': this.togglePause(); break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': this.keys.up = false; break;
+                case 'KeyS': case 'ArrowDown': this.keys.down = false; break;
+                case 'KeyA': case 'ArrowLeft': this.keys.left = false; break;
+                case 'KeyD': case 'ArrowRight': this.keys.right = false; break;
+                case 'Space': case 'ShiftLeft': case 'ShiftRight':
+                    this.keys.turbo = false;
+                    break;
+            }
+        });
+
+        // Touch buttons helper
+        const bindTouch = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const start = (e) => { e.preventDefault(); audio.init(); this.keys[key] = true; };
+            const stop = (e) => { e.preventDefault(); this.keys[key] = false; };
+            el.addEventListener('touchstart', start, { passive: false });
+            el.addEventListener('touchend', stop, { passive: false });
+            el.addEventListener('mousedown', start);
+            el.addEventListener('mouseup', stop);
+            el.addEventListener('mouseleave', stop);
+        };
+
+        bindTouch('btn-up', 'up');
+        bindTouch('btn-down', 'down');
+        bindTouch('btn-left', 'left');
+        bindTouch('btn-right', 'right');
+        bindTouch('btn-turbo', 'turbo');
+
+        // Top HUD buttons
+        document.getElementById('pause-btn').addEventListener('click', () => this.togglePause());
+        document.getElementById('cam-toggle-btn').addEventListener('click', () => this.toggleCameraView());
+        document.getElementById('sound-toggle-btn').addEventListener('click', () => {
+            audio.init();
+            audio.muted = !audio.muted;
+            const icon = document.getElementById('sound-icon');
+            icon.className = audio.muted ? 'fa-solid fa-volume-xmark text-rose-400' : 'fa-solid fa-volume-high text-white';
+        });
+
+        // Menu interactions
+        document.getElementById('menu-play-btn').addEventListener('click', () => {
+            audio.init();
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+            this.startLevel(progress.data.unlockedLevel);
+        });
+
+        document.getElementById('menu-select-btn').addEventListener('click', () => {
+            audio.init();
+            this.renderLevelSelectorGrid('all');
+            document.getElementById('level-select-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('close-select-btn').addEventListener('click', () => {
+            document.getElementById('level-select-modal').classList.add('hidden');
+            this.updateMenuHUD();
+        });
+
+        document.getElementById('menu-help-btn').addEventListener('click', () => {
+            document.getElementById('help-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('close-help-btn').addEventListener('click', () => {
+            document.getElementById('help-modal').classList.add('hidden');
+        });
+
+        document.getElementById('start-help-play-btn').addEventListener('click', () => {
+            document.getElementById('help-modal').classList.add('hidden');
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+            this.startLevel(progress.data.unlockedLevel);
+        });
+
+        // Pause Modal Actions
+        document.getElementById('resume-btn').addEventListener('click', () => this.togglePause());
+        document.getElementById('restart-lvl-btn').addEventListener('click', () => {
+            document.getElementById('pause-modal').classList.add('hidden');
+            this.startLevel(this.currentLevelIdx + 1);
+        });
+        document.getElementById('pause-to-select-btn').addEventListener('click', () => {
+            document.getElementById('pause-modal').classList.add('hidden');
+            this.renderLevelSelectorGrid('all');
+            document.getElementById('level-select-modal').classList.remove('hidden');
+        });
+        document.getElementById('pause-to-menu-btn').addEventListener('click', () => {
+            document.getElementById('pause-modal').classList.add('hidden');
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            this.updateMenuHUD();
+        });
+
+        // Win Modal Actions
+        document.getElementById('win-next-btn').addEventListener('click', () => {
+            document.getElementById('win-modal').classList.add('hidden');
+            const nextLvl = this.currentLevelIdx + 2;
+            if (nextLvl <= 50) {
+                this.startLevel(nextLvl);
+            } else {
+                document.getElementById('main-menu').classList.remove('hidden');
+                document.getElementById('game-hud').classList.add('hidden');
+                this.updateMenuHUD();
+            }
+        });
+        document.getElementById('win-select-btn').addEventListener('click', () => {
+            document.getElementById('win-modal').classList.add('hidden');
+            this.renderLevelSelectorGrid('all');
+            document.getElementById('level-select-modal').classList.remove('hidden');
+        });
+
+        // Retry & Game Over Actions
+        document.getElementById('retry-btn').addEventListener('click', () => {
+            document.getElementById('gameover-modal').classList.add('hidden');
+            this.startLevel(this.currentLevelIdx + 1);
+        });
+        document.getElementById('gameover-select-btn').addEventListener('click', () => {
+            document.getElementById('gameover-modal').classList.add('hidden');
+            this.renderLevelSelectorGrid('all');
+            document.getElementById('level-select-modal').classList.remove('hidden');
+        });
+
+        // Reset progress
+        document.getElementById('reset-progress-btn').addEventListener('click', () => {
+            progress.reset();
+            this.renderLevelSelectorGrid('all');
+            this.updateMenuHUD();
+        });
+    }
+
+    togglePause() {
+        if (!this.levelActive) return;
+        this.isPaused = !this.isPaused;
+        const modal = document.getElementById('pause-modal');
+        if (this.isPaused) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
+        }
+    }
+}
+
+/* ==========================================================================
+   INITIALIZATION AND ANIMATION LOOP
+   ========================================================================== */
+window.onload = function() {
+    const game = new MouseMazeApp();
+    let lastTime = performance.now();
+
+    function animate(currentTime) {
+        requestAnimationFrame(animate);
+        const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
+        lastTime = currentTime;
+
+        game.update(delta);
+        game.renderer.render(game.scene, game.camera);
+    }
+
+    animate(performance.now());
+};
+</script>
+</body>
+</html>
