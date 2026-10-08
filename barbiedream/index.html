@@ -1,1 +1,1635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barbie & Ken: Dream Fashion Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Pacifico, Dancing Script & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Pacifico&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for tools and categories -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --barbie-pink: #e0218a;
+      --barbie-deep: #b31268;
+      --barbie-light: #ff7ec1;
+      --barbie-pale: #fff0f7;
+      --ken-blue: #0284c7;
+      --ken-cyan: #06b6d4;
+      --gold-sparkle: #f59e0b;
+    }
 
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 20%, #ffebf5 0%, #fed7eb 40%, #fbcfe8 100%);
+      color: #374151;
+      overflow-x: hidden;
+    }
+
+    .font-barbie {
+      font-family: 'Dancing Script', cursive;
+    }
+
+    .font-retro {
+      font-family: 'Pacifico', cursive;
+    }
+
+    /* Custom Pink Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #fdf2f8;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #f472b6;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #db2777;
+    }
+
+    /* Sparkle & Float Animations */
+    @keyframes floatSoft {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-float {
+      animation: floatSoft 3.5s ease-in-out infinite;
+    }
+
+    @keyframes shine {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-badge {
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+      background-size: 200% 100%;
+      animation: shine 3s infinite linear;
+    }
+
+    /* Doll Box Packaging styling */
+    .doll-box-frame {
+      border: 14px solid #db2777;
+      box-shadow: 0 25px 50px -12px rgba(219, 39, 119, 0.45), inset 0 0 40px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    .doll-box-frame::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 30%, transparent 60%);
+      z-index: 40;
+    }
+
+    /* Layer transitions */
+    .doll-svg-layer {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Interactive garment item cards */
+    .wardrobe-card {
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .wardrobe-card:hover {
+      transform: translateY(-4px) scale(1.03);
+    }
+    .wardrobe-card:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+  <!-- TOP HEADER & BRANDING BAR -->
+  <header class="bg-white/80 backdrop-blur-md border-b border-pink-200 sticky top-0 z-50 px-4 py-2.5 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-600 to-rose-400 flex items-center justify-center text-white shadow-md shadow-pink-500/30">
+          <i class="fa-solid fa-crown text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-barbie text-3xl md:text-4xl text-pink-600 leading-none tracking-wide drop-shadow-sm">
+            Barbie <span class="font-sans text-xs uppercase tracking-widest text-pink-400 font-extrabold">&</span> Ken
+          </h1>
+          <p class="text-[10px] md:text-xs tracking-wider uppercase font-bold text-pink-400">Dream Fashion Studio</p>
+        </div>
+      </div>
+
+      <!-- Character Mode Tabs (Barbie / Ken / Dúo) -->
+      <div class="flex items-center bg-pink-100/80 p-1 rounded-full border border-pink-200 shadow-inner">
+        <button id="tab-barbie" onclick="switchActiveCharacter('barbie')" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm bg-gradient-to-r from-pink-500 to-rose-500 text-white">
+          <i class="fa-solid fa-person-dress"></i>
+          <span>Barbie</span>
+        </button>
+        <button id="tab-ken" onclick="switchActiveCharacter('ken')" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all text-pink-700 hover:text-pink-900">
+          <i class="fa-solid fa-person"></i>
+          <span>Ken</span>
+        </button>
+        <button id="tab-duo" onclick="switchActiveCharacter('duo')" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all text-pink-700 hover:text-pink-900">
+          <i class="fa-solid fa-heart text-pink-500"></i>
+          <span>Dúo Glamour</span>
+        </button>
+      </div>
+
+      <!-- Quick Action Utilities (Random, Box Mode, Sound, Snapshot) -->
+      <div class="flex items-center gap-2">
+        <button onclick="randomizeCurrentOutfit()" title="Look Aleatorio Sorpresa" class="w-9 h-9 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 flex items-center justify-center text-sm font-semibold transition active:scale-95 shadow-sm">
+          <i class="fa-solid fa-dice text-base"></i>
+        </button>
+        <button id="btn-toggle-box" onclick="toggleDollBox()" title="Modo Caja de Colección" class="w-9 h-9 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 flex items-center justify-center text-sm font-semibold transition active:scale-95 shadow-sm">
+          <i class="fa-solid fa-cube text-base"></i>
+        </button>
+        <button id="btn-toggle-sound" onclick="toggleAudio()" title="Música y Efectos" class="w-9 h-9 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 flex items-center justify-center text-sm font-semibold transition active:scale-95 shadow-sm">
+          <i id="sound-icon" class="fa-solid fa-volume-high text-base"></i>
+        </button>
+        <button onclick="openSnapshotModal()" class="flex items-center gap-2 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-600 hover:to-rose-600 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-md shadow-pink-500/25 active:scale-95 transition">
+          <i class="fa-solid fa-camera-retro text-sm"></i>
+          <span class="hidden sm:inline">Foto Polaroid</span>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main class="max-w-7xl w-full mx-auto p-3 md:p-5 flex-1 flex flex-col lg:flex-row gap-5 items-stretch">
+    
+    <!-- LEFT COLUMN: THE FASHION STAGE & DOLL VIEWPORT -->
+    <section class="w-full lg:w-7/12 flex flex-col items-center justify-center relative">
+      
+      <!-- Stage Container with Dynamic Background -->
+      <div id="stage-wrapper" class="w-full max-w-[500px] aspect-[4/5] rounded-3xl relative overflow-hidden transition-all duration-500 shadow-2xl flex items-center justify-center bg-gradient-to-b from-sky-200 via-pink-100 to-rose-200 border-4 border-white/80">
+        
+        <!-- Background Scene Dynamic Layer -->
+        <div id="scenery-layer" class="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500"></div>
+
+        <!-- Sparkles / Glitters floating overlay -->
+        <div id="sparkle-particles" class="absolute inset-0 pointer-events-none z-30 opacity-75"></div>
+
+        <!-- DOLL SVG CANVAS -->
+        <svg id="doll-canvas" viewBox="0 0 900 1100" class="w-full h-full relative z-20" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- Skin Tone Gradients for Barbie -->
+            <radialGradient id="barbie-skin-fair" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#ffe9dd" />
+              <stop offset="100%" stop-color="#f5ceb8" />
+            </radialGradient>
+            <radialGradient id="barbie-skin-tan" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#f8cfab" />
+              <stop offset="100%" stop-color="#dfa474" />
+            </radialGradient>
+            <radialGradient id="barbie-skin-deep" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#b67a50" />
+              <stop offset="100%" stop-color="#804a29" />
+            </radialGradient>
+
+            <!-- Skin Tone Gradients for Ken -->
+            <radialGradient id="ken-skin-fair" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#fee5d4" />
+              <stop offset="100%" stop-color="#f0be9f" />
+            </radialGradient>
+            <radialGradient id="ken-skin-tan" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#e6b185" />
+              <stop offset="100%" stop-color="#c18353" />
+            </radialGradient>
+            <radialGradient id="ken-skin-deep" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#a46944" />
+              <stop offset="100%" stop-color="#6e3c1e" />
+            </radialGradient>
+
+            <!-- Hair Shine Gradients -->
+            <linearGradient id="hair-shine" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.1" />
+              <stop offset="50%" stop-color="white" stop-opacity="0.5" />
+              <stop offset="100%" stop-color="white" stop-opacity="0.1" />
+            </linearGradient>
+
+            <!-- Soft Drop Shadows -->
+            <filter id="doll-shadow" x="-10%" y="-10%" width="130%" height="130%">
+              <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#831843" flood-opacity="0.25"/>
+            </filter>
+            <filter id="item-shadow" x="-15%" y="-15%" width="130%" height="130%">
+              <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#4c0519" flood-opacity="0.18"/>
+            </filter>
+          </defs>
+
+          <!-- Doll Shadow on the floor -->
+          <ellipse id="stage-ground-shadow" cx="450" cy="1030" rx="280" ry="24" fill="rgba(88, 28, 66, 0.22)" filter="blur(8px)" />
+
+          <!-- ============================================== -->
+          <!-- GROUP: BARBIE DOLL (Left/Center Anchor)        -->
+          <!-- ============================================== -->
+          <g id="group-barbie" filter="url(#doll-shadow)" class="doll-svg-layer">
+            <!-- Layers ordered back-to-front -->
+            <g id="b-layer-back-hair"></g>
+            <g id="b-layer-body"></g>
+            <g id="b-layer-face"></g>
+            <g id="b-layer-bottoms"></g>
+            <g id="b-layer-tops"></g>
+            <g id="b-layer-dresses"></g>
+            <g id="b-layer-shoes"></g>
+            <g id="b-layer-front-hair"></g>
+            <g id="b-layer-accessories"></g>
+          </g>
+
+          <!-- ============================================== -->
+          <!-- GROUP: KEN DOLL (Right/Center Anchor)          -->
+          <!-- ============================================== -->
+          <g id="group-ken" filter="url(#doll-shadow)" class="doll-svg-layer">
+            <g id="k-layer-back-hair"></g>
+            <g id="k-layer-body"></g>
+            <g id="k-layer-face"></g>
+            <g id="k-layer-bottoms"></g>
+            <g id="k-layer-tops"></g>
+            <g id="k-layer-shoes"></g>
+            <g id="k-layer-front-hair"></g>
+            <g id="k-layer-accessories"></g>
+          </g>
+
+          <!-- Collector Box Graphic Overlay when in Box Mode -->
+          <g id="box-overlay-graphics" style="display: none;">
+            <!-- Plastic shine diagonal highlights -->
+            <polygon points="0,0 260,0 60,1100 0,1100" fill="url(#hair-shine)" opacity="0.65" />
+            <polygon points="650,0 900,0 720,1100 500,1100" fill="url(#hair-shine)" opacity="0.4" />
+            
+            <!-- Collector Badge Bottom Banner -->
+            <rect x="50" y="930" width="800" height="120" rx="24" fill="#be185d" stroke="#fbcfe8" stroke-width="6" opacity="0.95" />
+            <text x="450" y="990" text-anchor="middle" font-family="'Pacifico', cursive" font-size="44" fill="#ffffff" filter="drop-shadow(2px 3px 0px #831843)">
+              Special Edition Doll
+            </text>
+            <text x="450" y="1030" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="18" fill="#fbcfe8" letter-spacing="4">
+              MATTEL VINTAGE INSPIRED • 100% ORIGINAL STYLE
+            </text>
+          </g>
+        </svg>
+
+        <!-- Toy Box Frame Outer Overlay (HTML) -->
+        <div id="toy-box-border" class="hidden absolute inset-0 pointer-events-none doll-box-frame rounded-3xl z-40">
+          <div class="absolute top-4 left-6 bg-pink-600/90 text-white font-barbie text-4xl px-6 py-1.5 rounded-full border-2 border-white shadow-lg tracking-wider">
+            Barbie
+          </div>
+          <div class="absolute top-5 right-6 bg-cyan-500/90 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-full border-2 border-white shadow-lg tracking-widest">
+            Kenough
+          </div>
+        </div>
+
+        <!-- Stage Scenery Badge -->
+        <div class="absolute bottom-3 left-3 bg-white/70 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-bold text-pink-700 border border-pink-200 shadow-sm z-30 flex items-center gap-1.5">
+          <i class="fa-solid fa-location-dot text-pink-500"></i>
+          <span id="label-scenery-name">Mansión Dreamhouse</span>
+        </div>
+
+      </div>
+
+      <!-- Quick Floating Controls below Stage -->
+      <div class="w-full max-w-[500px] mt-3 flex items-center justify-between px-2 text-xs font-semibold text-pink-700">
+        <span id="character-indicator" class="bg-pink-100/90 px-3 py-1 rounded-lg border border-pink-200">
+          Vestidor: <b class="text-pink-600">Barbie</b>
+        </span>
+        <button onclick="resetCurrentDoll()" class="hover:text-rose-600 transition flex items-center gap-1">
+          <i class="fa-solid fa-rotate-left"></i> Restablecer look
+        </button>
+      </div>
+
+    </section>
+    <!-- RIGHT COLUMN: THE WARDROBE ATELIER & DRESSING CONTROLS -->
+    <section class="w-full lg:w-5/12 bg-white/90 backdrop-blur-xl rounded-3xl p-4 md:p-6 border border-pink-100 shadow-xl flex flex-col justify-between">
+      
+      <div>
+        <!-- Category Navigation Carousel -->
+        <div class="flex items-center justify-between border-b border-pink-100 pb-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center text-sm font-bold">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </span>
+            <h2 class="font-extrabold text-gray-800 text-base md:text-lg">Atelier de Moda</h2>
+          </div>
+          <span id="item-counter" class="text-xs font-bold text-pink-500 bg-pink-50 px-2.5 py-1 rounded-full border border-pink-200">
+            Colección 2026
+          </span>
+        </div>
+
+        <!-- CATEGORY TABS -->
+        <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-4" id="category-tabs">
+          <!-- Filled dynamically via JS depending on Barbie/Ken -->
+        </div>
+
+        <!-- SUB-PALETTE PICKER (Color Tone Customizer) -->
+        <div id="palette-toolbar" class="bg-pink-50/80 rounded-2xl p-2.5 border border-pink-100 mb-4 flex items-center justify-between gap-2">
+          <span class="text-xs font-bold text-pink-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-palette text-pink-500"></i>
+            <span id="palette-label">Tono / Estilo:</span>
+          </span>
+          <div id="palette-swatches" class="flex items-center gap-1.5 flex-wrap justify-end">
+            <!-- Dynamic Color Swatches -->
+          </div>
+        </div>
+
+        <!-- WARDROBE ITEMS GRID (Scrollable) -->
+        <div class="relative">
+          <div id="wardrobe-items-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[380px] overflow-y-auto p-1.5 rounded-2xl">
+            <!-- Items populated dynamically by renderWardrobe() -->
+          </div>
+        </div>
+      </div>
+
+      <!-- INSPIRATION / FASHION QUOTE FOOTER -->
+      <div class="mt-4 pt-3 border-t border-pink-100 flex items-center justify-between text-xs text-gray-500">
+        <p class="italic text-[11px] text-pink-400">
+          <i class="fa-solid fa-sparkles text-pink-400"></i> "Tú puedes ser lo que quieras ser"
+        </p>
+        <button onclick="applySignatureStyle()" class="text-xs font-bold text-pink-600 hover:text-pink-800 underline decoration-pink-300">
+          Outfit Icónico
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+  <!-- MODAL: PHOTO BOOTH POLAROID & EXPORT -->
+  <div id="snapshot-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-pink-200 flex flex-col items-center animate-float">
+      
+      <div class="w-full flex items-center justify-between pb-3 border-b border-pink-100">
+        <h3 class="font-barbie text-3xl text-pink-600">¡Sesión de Fotos Oficial!</h3>
+        <button onclick="closeSnapshotModal()" class="w-8 h-8 rounded-full bg-pink-100 text-pink-700 hover:bg-pink-200 flex items-center justify-center font-bold">
+          ✕
+        </button>
+      </div>
+
+      <!-- POLAROID CARD PREVIEW -->
+      <div id="polaroid-card" class="bg-white p-4 pt-5 pb-6 rounded-2xl shadow-xl border border-pink-100 w-full max-w-[340px] my-4 flex flex-col items-center">
+        <!-- Render Canvas Container -->
+        <div id="polaroid-image-box" class="w-full aspect-[4/5] rounded-xl overflow-hidden shadow-inner border border-gray-200 relative bg-pink-50">
+          <canvas id="export-canvas" width="600" height="750" class="w-full h-full object-contain"></canvas>
+        </div>
+        <div class="w-full mt-3 px-2 flex justify-between items-end">
+          <div>
+            <p id="polaroid-caption" class="font-barbie text-2xl text-pink-600 leading-none">Barbie & Ken In Love</p>
+            <p class="text-[10px] text-gray-400 font-semibold tracking-wider uppercase">Colección Malibu Dream 2026</p>
+          </div>
+          <span class="text-pink-400 font-extrabold text-sm font-retro">♥ #Glam</span>
+        </div>
+      </div>
+
+      <!-- Polaroid Actions -->
+      <div class="w-full flex gap-3">
+        <button onclick="downloadSnapshotPNG()" class="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-pink-500/30 transition active:scale-95">
+          <i class="fa-solid fa-download"></i> Descargar Foto (PNG)
+        </button>
+        <button onclick="copySnapshotLink()" class="px-4 bg-pink-100 text-pink-700 hover:bg-pink-200 rounded-2xl font-bold text-sm transition">
+          <i class="fa-solid fa-share-nodes"></i>
+        </button>
+      </div>
+
+      <p id="modal-toast" class="text-xs font-semibold text-pink-600 mt-2.5 opacity-0 transition-opacity">
+        ¡Guardado con éxito!
+      </p>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-banner" class="fixed bottom-5 right-5 z-50 bg-gray-900/90 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 border border-pink-400/40">
+    <i class="fa-solid fa-wand-magic text-pink-400"></i>
+    <span id="toast-text">Mensaje</span>
+  </div>
+  <script>
+    /* ==========================================================
+       SYNTHESIZED SOUND EFFECTS ENGINE (Web Audio API)
+       Pure Web Audio without external assets for 100% reliability
+       ========================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playPop() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.09);
+      }
+
+      playSparkle() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.04);
+
+          gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.04);
+          gain.gain.linearRampToValueAtTime(0.18, this.ctx.currentTime + idx * 0.04 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.04 + 0.25);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(this.ctx.currentTime + idx * 0.04);
+          osc.stop(this.ctx.currentTime + idx * 0.04 + 0.28);
+        });
+      }
+
+      playCamera() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        // Shutter snap
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.06);
+
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.07);
+
+        // Flash recharge beep
+        setTimeout(() => {
+          if (!this.ctx) return;
+          const osc2 = this.ctx.createOscillator();
+          const gain2 = this.ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(900, this.ctx.currentTime);
+          gain2.gain.setValueAtTime(0.1, this.ctx.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+          osc2.connect(gain2);
+          gain2.connect(this.ctx.destination);
+          osc2.start();
+          osc2.stop(this.ctx.currentTime + 0.16);
+        }, 120);
+      }
+    }
+
+    const sound = new SoundEngine();
+    /* ==========================================================
+       GAME DATA & OUTFIT DEFINITIONS
+       ========================================================== */
+    const GAME_STATE = {
+      activeCharacter: 'barbie', // 'barbie' | 'ken' | 'duo'
+      isBoxMode: false,
+      selectedCategory: 'hair',
+      currentSceneryIndex: 0,
+      dolls: {
+        barbie: {
+          skin: 'fair',
+          hairStyle: 'high_pony',
+          hairColor: '#fde047', // Iconic blonde
+          top: 'gingham_crop',
+          bottom: 'gingham_skirt',
+          dress: null,
+          shoes: 'pink_roller',
+          accessory: 'cat_sunglasses',
+          lipstick: '#e11d48'
+        },
+        ken: {
+          skin: 'tan',
+          hairStyle: 'surf_wave',
+          hairColor: '#f59e0b', // Golden blonde Ken
+          top: 'kenough_hoodie',
+          bottom: 'denim_shorts',
+          shoes: 'sneakers_white',
+          accessory: 'sunglasses_aviator',
+          lipstick: '#f43f5e'
+        }
+      }
+    };
+
+    // Environments & Backdrops
+    const SCENIC_BACKGROUNDS = [
+      {
+        id: 'dreamhouse',
+        name: 'Mansión Dreamhouse',
+        gradient: 'linear-gradient(180deg, #fbcfe8 0%, #f472b6 40%, #db2777 100%)',
+        cssStyle: 'background: radial-gradient(circle, #fce7f3 20%, #f472b6 90%);'
+      },
+      {
+        id: 'beach',
+        name: 'Playa de Malibu',
+        gradient: 'linear-gradient(180deg, #38bdf8 0%, #bae6fd 50%, #fde047 80%, #f59e0b 100%)',
+        cssStyle: 'background: linear-gradient(to bottom, #38bdf8 0%, #a5f3fc 45%, #fef08a 70%, #fbbf24 100%);'
+      },
+      {
+        id: 'disco',
+        name: 'Pista Disco Neón',
+        gradient: 'linear-gradient(135deg, #4c1d95 0%, #be185d 50%, #f43f5e 100%)',
+        cssStyle: 'background: radial-gradient(circle, #831843 15%, #31103f 85%);'
+      },
+      {
+        id: 'redcarpet',
+        name: 'Gala Alfombra Rosa',
+        gradient: 'linear-gradient(180deg, #18181b 0%, #831843 70%, #db2777 100%)',
+        cssStyle: 'background: linear-gradient(180deg, #27272a 0%, #701a75 60%, #db2777 100%);'
+      }
+    ];
+
+    // Hair Color Palettes
+    const HAIR_PALETTES = [
+      { name: 'Rubio Platino', hex: '#fef08a' },
+      { name: 'Rubio Dorado', hex: '#facc15' },
+      { name: 'Castaño Chocolate', hex: '#78350f' },
+      { name: 'Negro Azabache', hex: '#1c1917' },
+      { name: 'Rosa Pastel', hex: '#f472b6' },
+      { name: 'Fucsia Neón', hex: '#ec4899' },
+      { name: 'Turquesa Surf', hex: '#06b6d4' }
+    ];
+
+    // Skin Tone Options
+    const SKIN_OPTIONS = [
+      { id: 'fair', label: 'Porcelana', color: '#ffe9dd' },
+      { id: 'tan', label: 'Bronceado Malibu', color: '#f8cfab' },
+      { id: 'deep', label: 'Cálido Canela', color: '#804a29' }
+    ];
+    // Categories and wardrobe specifications for BARBIE
+    const BARBIE_WARDROBE = {
+      hair: [
+        { id: 'high_pony', name: 'Coleta Retro', icon: 'fa-scissors', previewColor: '#facc15' },
+        { id: 'disco_curls', name: 'Ondas Disco', icon: 'fa-wind', previewColor: '#fde047' },
+        { id: 'chic_bob', name: 'Corte Bob Glam', icon: 'fa-star', previewColor: '#ca8a04' },
+        { id: 'long_glam', name: 'Melena Hollywood', icon: 'fa-heart', previewColor: '#eab308' }
+      ],
+      tops: [
+        { id: 'gingham_crop', name: 'Top Rosa Vichy', desc: 'Cuadritos icónicos', color: '#f472b6' },
+        { id: 'roller_disco', name: 'Maillot Neón Roller', desc: 'Estilo años 80', color: '#fde047' },
+        { id: 'denim_vest', name: 'Chaleco Vaquero', desc: 'Western chic', color: '#38bdf8' },
+        { id: 'sparkle_blouse', name: 'Top Glitter Plata', desc: 'Fiesta brillante', color: '#cbd5e1' }
+      ],
+      bottoms: [
+        { id: 'gingham_skirt', name: 'Falda Vuelo Vichy', desc: 'Juego con top rosa', color: '#f472b6' },
+        { id: 'roller_shorts', name: 'Shorts Neón Flúor', desc: 'Con ribetes amarillos', color: '#e11d48' },
+        { id: 'flared_bell', name: 'Pantalón Campana', desc: 'Estilo Vaquera Rosa', color: '#ec4899' },
+        { id: 'glam_tutu', name: 'Falda Tul Princesa', desc: 'Efecto volumen mágico', color: '#fda4af' }
+      ],
+      dresses: [
+        { id: 'none', name: 'Sin Vestido', desc: 'Usar Tops/Faldas', color: '#ffffff' },
+        { id: 'gala_ballgown', name: 'Vestido Gala Magenta', desc: 'Corte sirena lujoso', color: '#db2777' },
+        { id: 'disco_jumpsuit', name: 'Mono Disco Dorado', desc: 'Lentejuelas 70s', color: '#eab308' },
+        { id: 'striped_vintage', name: 'Bañador 1959', desc: 'Rayas blanco y negro', color: '#18181b' }
+      ],
+      shoes: [
+        { id: 'pink_roller', name: 'Patines con Ruedas', desc: 'Amarillo y rosa flúor', icon: 'fa-bolt' },
+        { id: 'stiletto_pink', name: 'Tacones Aguja Fucsia', desc: 'Clásicos de salón', icon: 'fa-shoe-prints' },
+        { id: 'cowboy_boots', name: 'Botas Camperas Blancas', desc: 'Bordados delicados', icon: 'fa-socks' },
+        { id: 'beach_sandals', name: 'Sandalias Plataforma', desc: 'Ideales para playa', icon: 'fa-umbrella-beach' }
+      ],
+      accessories: [
+        { id: 'none', name: 'Ninguno', icon: 'fa-ban' },
+        { id: 'cat_sunglasses', name: 'Gafas Ojo de Gato', icon: 'fa-glasses' },
+        { id: 'cowgirl_hat', name: 'Sombrero Vaquero Rosa', icon: 'fa-hat-cowboy' },
+        { id: 'pearl_necklace', name: 'Collar de Perlas VIP', icon: 'fa-gem' },
+        { id: 'roller_visor', name: 'Visera Neón Sol', icon: 'fa-sun' },
+        { id: 'heart_purse', name: 'Bolso Corazón', icon: 'fa-bag-shopping' }
+      ],
+      makeup: [
+        { id: 'pink_lips', name: 'Labial Rosa Chicle', hex: '#ec4899' },
+        { id: 'classic_red', name: 'Labial Rojo Cine', hex: '#be123c' },
+        { id: 'glam_nude', name: 'Labial Brillo Nude', hex: '#fb923c' },
+        { id: 'berry_chic', name: 'Labial Frambuesa', hex: '#831843' }
+      ]
+    };
+    // Categories and wardrobe specifications for KEN
+    const KEN_WARDROBE = {
+      hair: [
+        { id: 'surf_wave', name: 'Corte Surfista', icon: 'fa-water', previewColor: '#f59e0b' },
+        { id: 'classic_pompadour', name: 'Pompadour Galán', icon: 'fa-user-tie', previewColor: '#78350f' },
+        { id: 'disco_center', name: 'Raya al Centro 80s', icon: 'fa-music', previewColor: '#eab308' },
+        { id: 'beach_buzz', name: 'Corte Desenfadado', icon: 'fa-sun', previewColor: '#1c1917' }
+      ],
+      tops: [
+        { id: 'kenough_hoodie', name: 'Sudadera "I Am Kenough"', desc: 'Tie-dye multicolor', color: '#c084fc' },
+        { id: 'pastel_beach_shirt', name: 'Camisa Playera Rayas', desc: 'Rosa y verde menta', color: '#67e8f9' },
+        { id: 'black_fringe_shirt', name: 'Camisa Vaquera Flecos', desc: 'Western con rosas bordadas', color: '#18181b' },
+        { id: 'disco_suit_jacket', name: 'Chaqueta Gala Blanca', desc: 'Solapas satinadas', color: '#f1f5f9' }
+      ],
+      bottoms: [
+        { id: 'denim_shorts', name: 'Bermudas Denim Rasgadas', desc: 'Lavado claro casual', color: '#38bdf8' },
+        { id: 'pastel_swim_trunks', name: 'Bañador Rayas Pastel', desc: 'A juego con la camisa', color: '#2dd4bf' },
+        { id: 'leather_pants', name: 'Pantalón Vaquero Negro', desc: 'Cinturón con hebilla grande', color: '#27272a' },
+        { id: 'white_tux_pants', name: 'Pantalón Gala Blanco', desc: 'Elegancia absoluta', color: '#e2e8f0' }
+      ],
+      shoes: [
+        { id: 'sneakers_white', name: 'Zapatillas Retro Blancas', desc: 'Suela chunky', icon: 'fa-shoe-prints' },
+        { id: 'roller_yellow', name: 'Patines en Línea Neón', desc: 'Ruedas luminosas', icon: 'fa-bolt' },
+        { id: 'ken_cowboy_boots', name: 'Botas de Vaquero Cuero', desc: 'Puntera de metal', icon: 'fa-socks' },
+        { id: 'loafers_black', name: 'Mocasines de Fiesta', desc: 'Con detalle dorado', icon: 'fa-gem' }
+      ],
+      accessories: [
+        { id: 'none', name: 'Ninguno', icon: 'fa-ban' },
+        { id: 'sunglasses_aviator', name: 'Gafas de Aviador Oro', icon: 'fa-glasses' },
+        { id: 'ken_fur_cape', name: 'Abrigo Mojo Dojo de Piel', icon: 'fa-shield-halved' },
+        { id: 'ken_surfboard', name: 'Tabla de Surf Ken', icon: 'fa-water' },
+        { id: 'acoustic_guitar', name: 'Guitarra Acústica Serenata', icon: 'fa-guitar' },
+        { id: 'gold_chain', name: 'Cadena con Dije Caballo', icon: 'fa-horse' }
+      ]
+    };
+    /* ==========================================================
+       SVG PROCEDURAL RENDER ENGINE
+       Vector drawing generators for Barbie & Ken layered assets
+       ========================================================== */
+    
+    function renderBarbie(state, isSolo) {
+      const offsetX = isSolo ? 450 : 290;
+      const scale = isSolo ? 1.05 : 0.94;
+      const bGroup = document.getElementById('group-barbie');
+      
+      // Position transform
+      bGroup.setAttribute('transform', `translate(${offsetX - 450 * scale}, ${isSolo ? 20 : 60}) scale(${scale})`);
+      bGroup.style.display = (GAME_STATE.activeCharacter === 'ken' && !isSolo) ? 'none' : 'block';
+
+      // 1. Back Hair
+      const backHair = document.getElementById('b-layer-back-hair');
+      const hColor = state.hairColor;
+      if (state.hairStyle === 'disco_curls' || state.hairStyle === 'long_glam') {
+        backHair.innerHTML = `
+          <path d="M370 250 C320 360, 310 520, 340 680 C360 620, 420 540, 440 400 Z" fill="${hColor}" opacity="0.95"/>
+          <path d="M530 250 C580 360, 590 520, 560 680 C540 620, 480 540, 460 400 Z" fill="${hColor}" opacity="0.95"/>
+        `;
+      } else {
+        backHair.innerHTML = '';
+      }
+
+      // 2. Body / Silhouette (Stylized fashion doll proportions)
+      const skinGrad = `url(#barbie-skin-${state.skin})`;
+      const bodyLayer = document.getElementById('b-layer-body');
+      bodyLayer.innerHTML = `
+        <!-- Neck & Torso -->
+        <path d="M428 280 L428 340 C428 350, 400 375, 395 400 L395 530 C410 540, 430 550, 450 550 C470 550, 490 540, 505 530 L505 400 C500 375, 472 350, 472 340 L472 280 Z" fill="${skinGrad}" />
+        
+        <!-- Shoulders & Arms -->
+        <!-- Left Arm (Posed gracefully) -->
+        <path d="M398 385 C370 410, 350 460, 345 520 C342 550, 345 590, 335 630 C330 645, 320 660, 330 665 C340 668, 350 655, 358 640 C370 600, 375 560, 380 525 C390 475, 405 435, 412 400 Z" fill="${skinGrad}" />
+        <!-- Right Arm (Hand resting near hip) -->
+        <path d="M502 385 C530 410, 550 460, 555 520 C558 550, 555 590, 565 630 C570 645, 580 660, 570 665 C560 668, 550 655, 542 640 C530 600, 525 560, 520 525 C510 475, 495 435, 488 400 Z" fill="${skinGrad}" />
+
+        <!-- Legs & Feet (Long fashion doll legs) -->
+        <path d="M422 540 C418 640, 410 760, 412 870 C413 920, 412 965, 415 1010 L435 1010 C438 965, 442 920, 442 870 C445 760, 446 640, 448 545 Z" fill="${skinGrad}" />
+        <path d="M452 545 C454 640, 455 760, 458 870 C458 920, 462 965, 465 1010 L485 1010 C488 965, 487 920, 488 870 C490 760, 482 640, 478 540 Z" fill="${skinGrad}" />
+        
+        <!-- Doll Head Silhouette -->
+        <ellipse cx="450" cy="235" rx="55" ry="68" fill="${skinGrad}" />
+        <path d="M410 260 C425 295, 475 295, 490 260 Z" fill="${skinGrad}" />
+      `;
+
+      // 3. Face Details (Eyes with winged liner, cute blush, gloss)
+      const faceLayer = document.getElementById('b-layer-face');
+      faceLayer.innerHTML = `
+        <!-- Cheerful Doll Eyes -->
+        <g id="barbie-eyes">
+          <!-- Left Eye -->
+          <ellipse cx="430" cy="230" rx="12" ry="8" fill="#ffffff" />
+          <circle cx="431" cy="230" r="6" fill="#0284c7" />
+          <circle cx="433" cy="228" r="2.2" fill="#ffffff" />
+          <path d="M416 226 C422 218, 438 218, 445 224 L448 221" stroke="#1f2937" stroke-width="3.2" stroke-linecap="round" fill="none" />
+          <!-- Eyelashes -->
+          <path d="M444 223 L449 217 M440 220 L444 214 M434 219 L435 212" stroke="#1f2937" stroke-width="2" stroke-linecap="round" />
+
+          <!-- Right Eye -->
+          <ellipse cx="470" cy="230" rx="12" ry="8" fill="#ffffff" />
+          <circle cx="469" cy="230" r="6" fill="#0284c7" />
+          <circle cx="471" cy="228" r="2.2" fill="#ffffff" />
+          <path d="M455 224 C462 218, 478 218, 484 226 L487 221" stroke="#1f2937" stroke-width="3.2" stroke-linecap="round" fill="none" />
+          <!-- Eyelashes -->
+          <path d="M483 223 L488 217 M479 220 L483 214 M475 219 L476 212" stroke="#1f2937" stroke-width="2" stroke-linecap="round" />
+        </g>
+
+        <!-- Cute Eyebrows -->
+        <path d="M418 214 C425 208, 436 210, 442 214" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none" />
+        <path d="M458 214 C464 210, 475 208, 482 214" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none" />
+
+        <!-- Soft Doll Blush -->
+        <circle cx="418" cy="245" r="11" fill="#f43f5e" opacity="0.3" filter="blur(3px)" />
+        <circle cx="482" cy="245" r="11" fill="#f43f5e" opacity="0.3" filter="blur(3px)" />
+
+        <!-- Dainty Nose & Iconic Smile -->
+        <path d="M448 242 L452 248 L448 249" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5" />
+        <path d="M438 262 Q450 274 462 262" stroke="#be123c" stroke-width="3.5" stroke-linecap="round" fill="${state.lipstick}" />
+        <ellipse cx="450" cy="265" rx="5" ry="2" fill="#ffffff" opacity="0.6" />
+      `;
+
+      // 4. Dress Layer (or Tops + Bottoms)
+      const dressLayer = document.getElementById('b-layer-dresses');
+      const topsLayer = document.getElementById('b-layer-tops');
+      const bottomsLayer = document.getElementById('b-layer-bottoms');
+
+      if (state.dress && state.dress !== 'none') {
+        topsLayer.innerHTML = '';
+        bottomsLayer.innerHTML = '';
+        if (state.dress === 'gala_ballgown') {
+          dressLayer.innerHTML = `
+            <!-- Magenta Glamour Gala Ballgown -->
+            <path d="M412 390 C412 370, 488 370, 488 390 L496 500 C470 510, 430 510, 404 500 Z" fill="#db2777" />
+            <path d="M404 500 C340 680, 310 880, 290 1010 L610 1010 C590 880, 560 680, 496 500 Z" fill="#be185d" filter="url(#item-shadow)" />
+            <!-- Glitter Tulle Overlays -->
+            <path d="M404 500 Q450 680 430 1010 L470 1010 Q450 680 496 500 Z" fill="#f472b6" opacity="0.6" />
+            <polygon points="450,380 440,500 460,500" fill="#fdf2f8" opacity="0.3" />
+          `;
+        } else if (state.dress === 'disco_jumpsuit') {
+          dressLayer.innerHTML = `
+            <!-- Gold Disco 70s Jumpsuit -->
+            <path d="M410 395 L490 395 L496 530 L404 530 Z" fill="#eab308" />
+            <path d="M404 530 L380 750 L340 1010 L440 1010 L445 680 L455 680 L460 1010 L560 1010 L520 750 L496 530 Z" fill="#ca8a04" filter="url(#item-shadow)" />
+            <circle cx="450" cy="440" r="14" fill="#fef08a" />
+          `;
+        } else if (state.dress === 'striped_vintage') {
+          dressLayer.innerHTML = `
+            <!-- 1959 Vintage Swimsuit Black & White Zebra -->
+            <path d="M410 395 C410 375, 490 375, 490 395 L485 545 C470 560, 430 560, 415 545 Z" fill="#18181b" />
+            <path d="M410 410 L490 410 M411 435 L489 435 M412 460 L488 460 M413 485 L487 485 M414 510 L486 510 M415 535 L485 535" stroke="#ffffff" stroke-width="7" />
+          `;
+        }
+      } else {
+        dressLayer.innerHTML = '';
+        // Separate Tops
+        if (state.top === 'gingham_crop') {
+          topsLayer.innerHTML = `
+            <!-- Pink Gingham Crop Top -->
+            <path d="M412 390 C425 365, 475 365, 488 390 L484 465 L416 465 Z" fill="#f472b6" />
+            <!-- Straps & Bow -->
+            <rect x="424" y="355" width="8" height="35" fill="#f472b6" />
+            <rect x="468" y="355" width="8" height="35" fill="#f472b6" />
+            <path d="M442 390 Q450 380 458 390 Q450 400 442 390 Z" fill="#ffffff" />
+            <!-- Pattern -->
+            <path d="M415 415 L485 415 M416 440 L484 440" stroke="#ffffff" stroke-width="4" stroke-dasharray="8 6" opacity="0.8" />
+          `;
+        } else if (state.top === 'roller_disco') {
+          topsLayer.innerHTML = `
+            <!-- Neon 80s Roller Bodysuit -->
+            <path d="M410 380 L490 380 L485 480 L415 480 Z" fill="#facc15" />
+            <polygon points="410,380 450,480 415,480" fill="#ec4899" />
+            <polygon points="490,380 450,480 485,480" fill="#06b6d4" />
+          `;
+        } else if (state.top === 'denim_vest') {
+          topsLayer.innerHTML = `
+            <!-- Western Denim Vest -->
+            <path d="M405 380 L495 380 L490 475 L460 485 L440 485 L410 475 Z" fill="#0284c7" />
+            <polygon points="440,380 450,420 460,380" fill="#fdf2f8" />
+            <line x1="450" y1="420" x2="450" y2="480" stroke="#fde047" stroke-width="2" />
+          `;
+        } else {
+          // sparkle blouse
+          topsLayer.innerHTML = `
+            <path d="M408 380 C420 370, 480 370, 492 380 L485 470 L415 470 Z" fill="#e2e8f0" />
+            <circle cx="430" cy="410" r="3" fill="#ffffff" />
+            <circle cx="470" cy="430" r="3" fill="#ffffff" />
+            <circle cx="450" cy="400" r="4" fill="#ffffff" />
+          `;
+        }
+
+        // Separate Bottoms
+        if (state.bottom === 'gingham_skirt') {
+          bottomsLayer.innerHTML = `
+            <!-- Pink Gingham Skater Skirt -->
+            <path d="M416 460 L484 460 L520 630 C470 655, 430 655, 380 630 Z" fill="#f472b6" filter="url(#item-shadow)" />
+            <path d="M390 540 Q450 560 510 540 M380 630 Q450 660 520 630" stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8" opacity="0.85" />
+            <rect x="420" y="455" width="60" height="12" rx="4" fill="#ec4899" />
+          `;
+        } else if (state.bottom === 'roller_shorts') {
+          bottomsLayer.innerHTML = `
+            <!-- Neon Roller Shorts -->
+            <path d="M418 470 L482 470 L488 560 L452 560 L450 530 L448 560 L412 560 Z" fill="#ec4899" />
+            <path d="M412 555 L448 555 M452 555 L488 555" stroke="#fde047" stroke-width="5" />
+          `;
+        } else if (state.bottom === 'flared_bell') {
+          bottomsLayer.innerHTML = `
+            <!-- Pink Flared Western Pants -->
+            <path d="M418 470 L482 470 L475 750 L520 1005 L455 1005 L450 630 L445 1005 L380 1005 L425 750 Z" fill="#db2777" filter="url(#item-shadow)" />
+            <!-- Star appliques -->
+            <polygon points="400,960 405,972 418,972 407,980 411,992 400,984 389,992 393,980 382,972 395,972" fill="#fef08a" />
+            <polygon points="500,960 505,972 518,972 507,980 511,992 500,984 489,992 493,980 482,972 495,972" fill="#fef08a" />
+          `;
+        } else {
+          // glam tutu
+          bottomsLayer.innerHTML = `
+            <path d="M418 465 L482 465 L540 640 C470 670, 430 670, 360 640 Z" fill="#fbcfe8" opacity="0.8" />
+            <path d="M420 465 L480 465 L525 615 C470 640, 430 640, 375 615 Z" fill="#f472b6" opacity="0.9" />
+          `;
+        }
+      }
+      // 5. Shoes Layer
+      const shoesLayer = document.getElementById('b-layer-shoes');
+      if (state.shoes === 'pink_roller') {
+        shoesLayer.innerHTML = `
+          <!-- Iconic Yellow & Pink Roller Skates -->
+          <rect x="405" y="985" width="34" height="28" rx="6" fill="#f472b6" stroke="#db2777" stroke-width="2" />
+          <circle cx="410" cy="1018" r="8" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+          <circle cx="434" cy="1018" r="8" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+          <rect x="458" y="985" width="34" height="28" rx="6" fill="#f472b6" stroke="#db2777" stroke-width="2" />
+          <circle cx="463" cy="1018" r="8" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+          <circle cx="487" cy="1018" r="8" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+        `;
+      } else if (state.shoes === 'stiletto_pink') {
+        shoesLayer.innerHTML = `
+          <!-- Hot Pink High Heels -->
+          <polygon points="414,995 436,995 438,1015 410,1015" fill="#be185d" />
+          <line x1="436" y1="995" x2="436" y2="1022" stroke="#be185d" stroke-width="4" stroke-linecap="round" />
+          <polygon points="464,995 486,995 488,1015 460,1015" fill="#be185d" />
+          <line x1="486" y1="995" x2="486" y2="1022" stroke="#be185d" stroke-width="4" stroke-linecap="round" />
+        `;
+      } else if (state.shoes === 'cowboy_boots') {
+        shoesLayer.innerHTML = `
+          <!-- White Cowgirl Boots -->
+          <path d="M410 930 L440 930 L440 1015 L405 1015 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" />
+          <path d="M460 930 L490 930 L490 1015 L455 1015 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" />
+        `;
+      } else {
+        // beach sandals
+        shoesLayer.innerHTML = `
+          <rect x="408" y="1005" width="30" height="8" rx="4" fill="#f472b6" />
+          <line x1="416" y1="998" x2="428" y2="1005" stroke="#fbcfe8" stroke-width="3" />
+          <rect x="460" y="1005" width="30" height="8" rx="4" fill="#f472b6" />
+          <line x1="468" y1="998" x2="480" y2="1005" stroke="#fbcfe8" stroke-width="3" />
+        `;
+      }
+
+      // 6. Front Hair
+      const frontHair = document.getElementById('b-layer-front-hair');
+      if (state.hairStyle === 'high_pony') {
+        frontHair.innerHTML = `
+          <!-- High Sleek Ponytail with Bangs -->
+          <circle cx="450" cy="220" r="54" fill="${hColor}" />
+          <!-- Ponytail tail swinging to side -->
+          <path d="M480 180 C540 180, 560 280, 540 430 C530 430, 515 350, 480 230 Z" fill="${hColor}" filter="url(#item-shadow)" />
+          <!-- Cute Side Swept Bangs -->
+          <path d="M400 200 C430 180, 480 190, 498 220 C460 215, 420 220, 400 200 Z" fill="${hColor}" />
+          <!-- Hair Scrunchie -->
+          <ellipse cx="482" cy="188" rx="10" ry="14" fill="#ec4899" />
+        `;
+      } else if (state.hairStyle === 'disco_curls') {
+        frontHair.innerHTML = `
+          <!-- Voluminous Disco Curls -->
+          <circle cx="450" cy="220" r="58" fill="${hColor}" />
+          <circle cx="395" cy="235" r="28" fill="${hColor}" />
+          <circle cx="505" cy="235" r="28" fill="${hColor}" />
+          <circle cx="390" cy="285" r="24" fill="${hColor}" />
+          <circle cx="510" cy="285" r="24" fill="${hColor}" />
+          <path d="M410 185 Q450 165 490 185 Q450 205 410 185 Z" fill="${hColor}" />
+        `;
+      } else if (state.hairStyle === 'chic_bob') {
+        frontHair.innerHTML = `
+          <!-- Modern Chic Fashion Bob -->
+          <path d="M395 210 C395 160, 505 160, 505 210 L515 310 C490 325, 490 280, 490 250 L410 250 C410 280, 410 325, 385 310 Z" fill="${hColor}" />
+          <!-- Sleek Center Fringe -->
+          <path d="M410 200 Q450 215 490 200 Q450 180 410 200 Z" fill="#ffffff" opacity="0.2" />
+        `;
+      } else {
+        // Long Hollywood Glam
+        frontHair.innerHTML = `
+          <path d="M395 210 C395 150, 505 150, 505 210 L520 400 C490 380, 490 260, 470 240 L430 240 C410 260, 410 380, 380 400 Z" fill="${hColor}" />
+        `;
+      }
+
+      // 7. Accessories
+      const accLayer = document.getElementById('b-layer-accessories');
+      if (state.accessory === 'cat_sunglasses') {
+        accLayer.innerHTML = `
+          <!-- White Cat-Eye Sunglasses -->
+          <polygon points="415,220 445,222 438,236 412,232" fill="#1e293b" stroke="#ffffff" stroke-width="4" />
+          <polygon points="455,222 485,220 488,232 462,236" fill="#1e293b" stroke="#ffffff" stroke-width="4" />
+          <line x1="445" y1="223" x2="455" y2="223" stroke="#ffffff" stroke-width="3" />
+        `;
+      } else if (state.accessory === 'cowgirl_hat') {
+        accLayer.innerHTML = `
+          <!-- Iconic Pink Cowgirl Hat -->
+          <ellipse cx="450" cy="165" rx="85" ry="24" fill="#ec4899" stroke="#be185d" stroke-width="3" />
+          <path d="M415 165 C420 100, 480 100, 485 165 Z" fill="#db2777" />
+          <ellipse cx="450" cy="164" rx="42" ry="7" fill="#fef08a" />
+        `;
+      } else if (state.accessory === 'pearl_necklace') {
+        accLayer.innerHTML = `
+          <!-- Pearl Choker -->
+          <path d="M430 335 Q450 350 470 335" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 8" />
+        `;
+      } else if (state.accessory === 'roller_visor') {
+        accLayer.innerHTML = `
+          <!-- Neon 80s Sun Visor -->
+          <path d="M400 190 Q450 170 500 190 L520 200 Q450 190 380 200 Z" fill="#06b6d4" opacity="0.85" />
+          <rect x="415" y="180" width="70" height="10" fill="#fde047" rx="3" />
+        `;
+      } else if (state.accessory === 'heart_purse') {
+        accLayer.innerHTML = `
+          <!-- Pink Heart Handbag (Held near right hip) -->
+          <path d="M570 635 C560 615, 535 625, 545 645 L565 670 L585 645 C595 625, 570 615, 560 635 Z" fill="#ec4899" stroke="#be185d" stroke-width="2" filter="url(#item-shadow)" />
+          <path d="M555 625 Q565 605 575 625" stroke="#fde047" stroke-width="2.5" fill="none" />
+        `;
+      } else {
+        accLayer.innerHTML = '';
+      }
+    }
+    /* ==========================================================
+       SVG PROCEDURAL RENDER ENGINE FOR KEN
+       Athletic doll silhouette, signature outfits, and accessories
+       ========================================================== */
+    function renderKen(state, isSolo) {
+      const offsetX = isSolo ? 450 : 610;
+      const scale = isSolo ? 1.05 : 0.95;
+      const kGroup = document.getElementById('group-ken');
+
+      kGroup.setAttribute('transform', `translate(${offsetX - 450 * scale}, ${isSolo ? 20 : 60}) scale(${scale})`);
+      kGroup.style.display = (GAME_STATE.activeCharacter === 'barbie' && !isSolo) ? 'none' : 'block';
+
+      const skinGrad = `url(#ken-skin-${state.skin})`;
+      const hColor = state.hairColor;
+
+      // 1. Ken Body (Athletic broad shoulders, tall build)
+      const bodyLayer = document.getElementById('k-layer-body');
+      bodyLayer.innerHTML = `
+        <!-- Strong Neck & Torso -->
+        <path d="M422 280 L422 340 C422 355, 385 375, 380 405 L385 530 C405 540, 440 545, 450 545 C460 545, 495 540, 515 530 L520 405 C515 375, 478 355, 478 340 L478 280 Z" fill="${skinGrad}" />
+        
+        <!-- Athletic Arms -->
+        <!-- Left Arm -->
+        <path d="M380 395 C355 425, 340 480, 335 530 C332 560, 335 600, 330 640 C325 655, 315 668, 325 672 C335 675, 345 660, 352 645 C365 605, 370 560, 375 525 C385 475, 395 435, 400 405 Z" fill="${skinGrad}" />
+        <!-- Right Arm (Slightly relaxed) -->
+        <path d="M520 395 C545 425, 560 480, 565 530 C568 560, 565 600, 570 640 C575 655, 585 668, 575 672 C565 675, 555 660, 548 645 C535 605, 530 560, 525 525 C515 475, 505 435, 500 405 Z" fill="${skinGrad}" />
+
+        <!-- Legs & Feet -->
+        <path d="M415 535 C410 640, 405 760, 408 870 C410 920, 410 965, 412 1010 L438 1010 C442 965, 446 920, 446 870 C448 760, 446 640, 448 540 Z" fill="${skinGrad}" />
+        <path d="M452 540 C454 640, 452 760, 454 870 C454 920, 458 965, 462 1010 L488 1010 C490 965, 490 920, 492 870 C495 760, 490 640, 485 535 Z" fill="${skinGrad}" />
+
+        <!-- Handsome Ken Head & Chiseled Jawline -->
+        <ellipse cx="450" cy="235" rx="54" ry="65" fill="${skinGrad}" />
+        <path d="M416 265 L435 292 L465 292 L484 265 Z" fill="${skinGrad}" />
+      `;
+
+      // 2. Ken Face & Expression
+      const faceLayer = document.getElementById('k-layer-face');
+      faceLayer.innerHTML = `
+        <!-- Friendly Ken Eyes -->
+        <g id="ken-eyes">
+          <ellipse cx="432" cy="232" rx="10" ry="7" fill="#ffffff" />
+          <circle cx="433" cy="232" r="5.2" fill="#0284c7" />
+          <circle cx="435" cy="230" r="1.8" fill="#ffffff" />
+          <path d="M420 228 C426 222, 438 222, 444 227" stroke="#1f2937" stroke-width="2.6" stroke-linecap="round" fill="none" />
+
+          <ellipse cx="468" cy="232" rx="10" ry="7" fill="#ffffff" />
+          <circle cx="467" cy="232" r="5.2" fill="#0284c7" />
+          <circle cx="469" cy="230" r="1.8" fill="#ffffff" />
+          <path d="M456 227 C462 222, 474 222, 480 228" stroke="#1f2937" stroke-width="2.6" stroke-linecap="round" fill="none" />
+        </g>
+
+        <!-- Strong Masculine Brows -->
+        <path d="M420 216 L444 218" stroke="#78350f" stroke-width="4.2" stroke-linecap="round" />
+        <path d="M456 218 L480 216" stroke="#78350f" stroke-width="4.2" stroke-linecap="round" />
+
+        <!-- Defined Nose & Ken's Trademark Confident Smile -->
+        <path d="M448 238 L453 248 L447 250" stroke="#b45309" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.4" />
+        <path d="M435 264 Q450 274 465 264" stroke="#e11d48" stroke-width="3" stroke-linecap="round" fill="#ffffff" />
+      `;
+
+      // 3. Ken Tops
+      const topLayer = document.getElementById('k-layer-tops');
+      if (state.top === 'kenough_hoodie') {
+        topLayer.innerHTML = `
+          <!-- Famous "I Am Kenough" Tie-Dye Pastel Hoodie -->
+          <path d="M380 395 L520 395 L515 540 L385 540 Z" fill="#e0e7ff" />
+          <!-- Pastel tie-dye streaks -->
+          <path d="M385 410 C420 440, 480 410, 515 440 L515 470 C460 440, 420 490, 385 460 Z" fill="#fbcfe8" opacity="0.8" />
+          <path d="M385 460 C420 490, 480 460, 515 490 L515 520 C460 490, 420 540, 385 510 Z" fill="#bae6fd" opacity="0.8" />
+          <!-- Kangaroo Pocket & Hood Strings -->
+          <rect x="420" y="475" width="60" height="35" rx="8" fill="#c7d2fe" />
+          <line x1="440" y1="395" x2="440" y2="440" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+          <line x1="460" y1="395" x2="460" y2="440" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+          <text x="450" y="445" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="12" fill="#4338ca" text-anchor="middle">KENOUGH</text>
+        `;
+      } else if (state.top === 'pastel_beach_shirt') {
+        topLayer.innerHTML = `
+          <!-- Pastel Striped Beach Malibu Shirt (Open collar) -->
+          <path d="M380 390 L520 390 L515 530 L385 530 Z" fill="#fed7aa" />
+          <path d="M400 390 L400 530 M430 390 L430 530 M470 390 L470 530 M500 390 L500 530" stroke="#67e8f9" stroke-width="12" />
+          <polygon points="435,390 450,440 465,390" fill="${skinGrad}" />
+        `;
+      } else if (state.top === 'black_fringe_shirt') {
+        topLayer.innerHTML = `
+          <!-- Western Black Fringe Shirt -->
+          <path d="M380 390 L520 390 L515 530 L385 530 Z" fill="#18181b" />
+          <!-- White fringed western yoke -->
+          <polygon points="380,390 450,445 520,390 520,410 450,465 380,410" fill="#ffffff" />
+          <!-- Rose appliques -->
+          <circle cx="410" cy="420" r="5" fill="#f43f5e" />
+          <circle cx="490" cy="420" r="5" fill="#f43f5e" />
+        `;
+      } else {
+        // disco white gala jacket
+        topLayer.innerHTML = `
+          <path d="M375 390 L525 390 L518 540 L382 540 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" />
+          <!-- Black Satin Lapels -->
+          <polygon points="410,390 450,470 425,480 395,390" fill="#0f172a" />
+          <polygon points="490,390 450,470 475,480 505,390" fill="#0f172a" />
+          <polygon points="435,465 450,480 465,465" fill="#ec4899" />
+        `;
+      }
+      // 4. Ken Bottoms
+      const botLayer = document.getElementById('k-layer-bottoms');
+      if (state.bottom === 'denim_shorts') {
+        botLayer.innerHTML = `
+          <!-- Ripped Light Denim Shorts -->
+          <path d="M390 520 L510 520 L505 660 L455 660 L450 580 L445 660 L395 660 Z" fill="#38bdf8" filter="url(#item-shadow)" />
+          <!-- Frayed Hem -->
+          <line x1="392" y1="658" x2="445" y2="658" stroke="#ffffff" stroke-width="3" stroke-dasharray="4 2" />
+          <line x1="455" y1="658" x2="505" y2="658" stroke="#ffffff" stroke-width="3" stroke-dasharray="4 2" />
+          <rect x="430" y="522" width="40" height="10" fill="#64748b" rx="2" />
+        `;
+      } else if (state.bottom === 'pastel_swim_trunks') {
+        botLayer.innerHTML = `
+          <!-- Striped Beach Trunks -->
+          <path d="M392 520 L508 520 L502 650 L455 650 L450 570 L445 650 L398 650 Z" fill="#2dd4bf" />
+          <line x1="420" y1="520" x2="420" y2="650" stroke="#fed7aa" stroke-width="12" />
+          <line x1="480" y1="520" x2="480" y2="650" stroke="#fed7aa" stroke-width="12" />
+        `;
+      } else if (state.bottom === 'leather_pants') {
+        botLayer.innerHTML = `
+          <!-- Black Cowboy Pants with Buckle -->
+          <path d="M390 520 L510 520 L500 750 L488 1005 L455 1005 L450 620 L445 1005 L412 1005 L400 750 Z" fill="#18181b" filter="url(#item-shadow)" />
+          <rect x="425" y="520" width="50" height="14" fill="#ca8a04" rx="3" />
+        `;
+      } else {
+        // white tux pants
+        botLayer.innerHTML = `
+          <path d="M390 520 L510 520 L500 750 L488 1005 L455 1005 L450 620 L445 1005 L412 1005 L400 750 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" />
+          <line x1="449" y1="530" x2="449" y2="1005" stroke="#cbd5e1" stroke-width="2" />
+        `;
+      }
+
+      // 5. Ken Shoes
+      const shoesLayer = document.getElementById('k-layer-shoes');
+      if (state.shoes === 'roller_yellow') {
+        shoesLayer.innerHTML = `
+          <!-- Neon Yellow Inline Skates -->
+          <rect x="402" y="985" width="38" height="28" rx="6" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+          <circle cx="408" cy="1018" r="8" fill="#ec4899" />
+          <circle cx="432" cy="1018" r="8" fill="#ec4899" />
+          <rect x="460" y="985" width="38" height="28" rx="6" fill="#fde047" stroke="#ca8a04" stroke-width="2" />
+          <circle cx="466" cy="1018" r="8" fill="#ec4899" />
+          <circle cx="490" cy="1018" r="8" fill="#ec4899" />
+        `;
+      } else if (state.shoes === 'sneakers_white') {
+        shoesLayer.innerHTML = `
+          <!-- White Platform Sneakers -->
+          <path d="M405 990 L440 990 L444 1018 L400 1018 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" />
+          <path d="M460 990 L495 990 L499 1018 L455 1018 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" />
+        `;
+      } else if (state.shoes === 'ken_cowboy_boots') {
+        shoesLayer.innerHTML = `
+          <!-- Brown Leather Cowboy Boots -->
+          <path d="M408 930 L442 930 L444 1018 L402 1018 Z" fill="#78350f" />
+          <path d="M458 930 L492 930 L494 1018 L452 1018 Z" fill="#78350f" />
+        `;
+      } else {
+        // loafers black
+        shoesLayer.innerHTML = `
+          <rect x="405" y="995" width="36" height="20" rx="6" fill="#0f172a" />
+          <rect x="415" y="997" width="16" height="4" fill="#fbbf24" />
+          <rect x="458" y="995" width="36" height="20" rx="6" fill="#0f172a" />
+          <rect x="468" y="997" width="16" height="4" fill="#fbbf24" />
+        `;
+      }
+
+      // 6. Ken Hair
+      const hairLayer = document.getElementById('k-layer-front-hair');
+      if (state.hairStyle === 'surf_wave') {
+        hairLayer.innerHTML = `
+          <!-- Beach Surfer Side Swept Hair -->
+          <path d="M405 230 C400 170, 500 160, 505 210 C480 190, 430 190, 410 220 Z" fill="${hColor}" />
+          <path d="M410 200 C430 170, 480 170, 495 210 C470 205, 440 215, 410 200 Z" fill="${hColor}" filter="url(#item-shadow)" />
+        `;
+      } else if (state.hairStyle === 'classic_pompadour') {
+        hairLayer.innerHTML = `
+          <!-- Chiseled 1960s Pompadour -->
+          <ellipse cx="450" cy="200" rx="46" ry="36" fill="${hColor}" />
+          <path d="M405 220 C405 160, 495 160, 495 220 Z" fill="${hColor}" />
+        `;
+      } else if (state.hairStyle === 'disco_center') {
+        hairLayer.innerHTML = `
+          <!-- 1970s Middle Parted Feathered Hair -->
+          <circle cx="420" cy="210" r="26" fill="${hColor}" />
+          <circle cx="480" cy="210" r="26" fill="${hColor}" />
+          <path d="M410 225 L450 190 L490 225 Z" fill="${hColor}" />
+        `;
+      } else {
+        // Beach buzz
+        hairLayer.innerHTML = `
+          <ellipse cx="450" cy="220" rx="46" ry="40" fill="${hColor}" />
+        `;
+      }
+
+      // 7. Ken Accessories
+      const accLayer = document.getElementById('k-layer-accessories');
+      if (state.accessory === 'sunglasses_aviator') {
+        accLayer.innerHTML = `
+          <!-- Gold Frame Aviator Sunglasses -->
+          <ellipse cx="432" cy="232" rx="13" ry="11" fill="#1e293b" stroke="#eab308" stroke-width="2.5" />
+          <ellipse cx="468" cy="232" rx="13" ry="11" fill="#1e293b" stroke="#eab308" stroke-width="2.5" />
+          <line x1="445" y1="230" x2="455" y2="230" stroke="#eab308" stroke-width="2.5" />
+        `;
+      } else if (state.accessory === 'ken_fur_cape') {
+        accLayer.innerHTML = `
+          <!-- Mojo Dojo Casa House Faux Mink Cape -->
+          <path d="M350 370 C390 350, 510 350, 550 370 C570 480, 580 620, 570 700 C530 680, 370 680, 330 700 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="6" opacity="0.95" filter="url(#item-shadow)" />
+          <!-- Black flecks -->
+          <path d="M380 430 L390 440 M450 480 L460 490 M520 440 L530 450 M410 560 L420 570 M500 570 L510 580" stroke="#0f172a" stroke-width="4" stroke-linecap="round" />
+        `;
+      } else if (state.accessory === 'ken_surfboard') {
+        accLayer.innerHTML = `
+          <!-- Ken Malibu Surfboard -->
+          <ellipse cx="320" cy="550" rx="30" ry="240" fill="#38bdf8" stroke="#ffffff" stroke-width="6" transform="rotate(-10 320 550)" filter="url(#item-shadow)" />
+          <line x1="320" y1="310" x2="320" y2="790" stroke="#fde047" stroke-width="8" transform="rotate(-10 320 550)" />
+        `;
+      } else if (state.accessory === 'acoustic_guitar') {
+        accLayer.innerHTML = `
+          <!-- Acoustic Guitar for 4-hour beach serenades -->
+          <ellipse cx="560" cy="590" rx="42" ry="55" fill="#b45309" stroke="#78350f" stroke-width="3" filter="url(#item-shadow)" />
+          <ellipse cx="550" cy="500" rx="30" ry="38" fill="#b45309" stroke="#78350f" stroke-width="3" />
+          <circle cx="550" cy="510" r="14" fill="#18181b" />
+          <rect x="544" y="380" width="12" height="120" fill="#78350f" />
+        `;
+      } else if (state.accessory === 'gold_chain') {
+        accLayer.innerHTML = `
+          <path d="M430 360 Q450 390 470 360" stroke="#fbbf24" stroke-width="4" fill="none" />
+          <circle cx="450" cy="385" r="7" fill="#fbbf24" />
+        `;
+      } else {
+        accLayer.innerHTML = '';
+      }
+    }
+    /* ==========================================================
+       WARDROBE UI MANAGEMENT & INTERACTION LOGIC
+       ========================================================== */
+
+    function updateGameView() {
+      const isDuo = GAME_STATE.activeCharacter === 'duo';
+      const isBarbie = GAME_STATE.activeCharacter === 'barbie' || isDuo;
+      const isKen = GAME_STATE.activeCharacter === 'ken' || isDuo;
+
+      if (isBarbie) renderBarbie(GAME_STATE.dolls.barbie, !isDuo);
+      if (isKen) renderKen(GAME_STATE.dolls.ken, !isDuo);
+
+      // Render Active Tab Buttons
+      const tabB = document.getElementById('tab-barbie');
+      const tabK = document.getElementById('tab-ken');
+      const tabD = document.getElementById('tab-duo');
+
+      const activeClass = "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm";
+      const inactiveClass = "text-pink-700 hover:text-pink-900";
+
+      tabB.className = `flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${GAME_STATE.activeCharacter === 'barbie' ? activeClass : inactiveClass}`;
+      tabK.className = `flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${GAME_STATE.activeCharacter === 'ken' ? activeClass : inactiveClass}`;
+      tabD.className = `flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${GAME_STATE.activeCharacter === 'duo' ? activeClass : inactiveClass}`;
+
+      document.getElementById('character-indicator').innerHTML = `Vestidor: <b class="text-pink-600 uppercase">${GAME_STATE.activeCharacter === 'duo' ? 'Barbie & Ken' : GAME_STATE.activeCharacter}</b>`;
+      
+      renderCategoryTabs();
+      renderPaletteSwatches();
+      renderWardrobeItems();
+    }
+
+    function switchActiveCharacter(charKey) {
+      sound.playPop();
+      GAME_STATE.activeCharacter = charKey;
+      GAME_STATE.selectedCategory = 'hair';
+      updateGameView();
+      showToast(`Cambiado a: ${charKey === 'duo' ? 'Dúo Pasarela' : charKey.toUpperCase()}`);
+    }
+
+    function renderCategoryTabs() {
+      const char = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      const container = document.getElementById('category-tabs');
+      
+      const categories = [
+        { key: 'hair', label: 'Cabello', icon: 'fa-scissors' },
+        { key: 'tops', label: 'Prendas', icon: 'fa-shirt' },
+        { key: 'bottoms', label: 'Faldas/Shorts', icon: 'fa-vest' },
+        ...(char === 'barbie' ? [{ key: 'dresses', label: 'Vestidos', icon: 'fa-person-dress' }] : []),
+        { key: 'shoes', label: 'Zapatos', icon: 'fa-shoe-prints' },
+        { key: 'accessories', label: 'Accesorios', icon: 'fa-gem' },
+        { key: 'scenery', label: 'Escenario', icon: 'fa-panorama' }
+      ];
+
+      container.innerHTML = categories.map(cat => {
+        const isActive = GAME_STATE.selectedCategory === cat.key;
+        return `
+          <button onclick="selectCategory('${cat.key}')" class="flex flex-col items-center justify-center p-2 rounded-2xl text-[11px] font-bold transition-all ${isActive ? 'bg-pink-600 text-white shadow-md shadow-pink-500/25 scale-105' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}">
+            <i class="fa-solid ${cat.icon} text-sm mb-1"></i>
+            <span class="truncate max-w-full">${cat.label}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectCategory(catKey) {
+      sound.playPop();
+      GAME_STATE.selectedCategory = catKey;
+      renderCategoryTabs();
+      renderPaletteSwatches();
+      renderWardrobeItems();
+    }
+
+    function renderPaletteSwatches() {
+      const container = document.getElementById('palette-swatches');
+      const label = document.getElementById('palette-label');
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      const doll = GAME_STATE.dolls[charKey];
+
+      if (GAME_STATE.selectedCategory === 'hair') {
+        label.innerText = "Color de Cabello:";
+        container.innerHTML = HAIR_PALETTES.map(p => `
+          <button onclick="changeHairColor('${p.hex}')" title="${p.name}" class="w-7 h-7 rounded-full border-2 transition transform hover:scale-110 active:scale-95 ${doll.hairColor === p.hex ? 'border-pink-600 ring-2 ring-pink-300' : 'border-white'}" style="background-color: ${p.hex};"></button>
+        `).join('');
+      } else if (GAME_STATE.selectedCategory === 'accessories' || GAME_STATE.selectedCategory === 'tops') {
+        label.innerText = "Tono de Piel:";
+        container.innerHTML = SKIN_OPTIONS.map(s => `
+          <button onclick="changeSkinTone('${s.id}')" title="${s.label}" class="w-7 h-7 rounded-full border-2 transition transform hover:scale-110 active:scale-95 ${doll.skin === s.id ? 'border-pink-600 ring-2 ring-pink-300' : 'border-white'}" style="background-color: ${s.color};"></button>
+        `).join('');
+      } else {
+        label.innerText = "Estilo de Temporada:";
+        container.innerHTML = `
+          <span class="text-xs font-semibold text-pink-600">Colección Rosa Glamour 2026</span>
+        `;
+      }
+    }
+    function renderWardrobeItems() {
+      const container = document.getElementById('wardrobe-items-container');
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      const wardrobe = charKey === 'ken' ? KEN_WARDROBE : BARBIE_WARDROBE;
+      const doll = GAME_STATE.dolls[charKey];
+      const cat = GAME_STATE.selectedCategory;
+
+      // Check if scenery category selected
+      if (cat === 'scenery') {
+        container.innerHTML = SCENIC_BACKGROUNDS.map((bg, idx) => `
+          <div onclick="selectScenery(${idx})" class="wardrobe-card cursor-pointer p-3 rounded-2xl bg-white border-2 transition text-center ${GAME_STATE.currentSceneryIndex === idx ? 'border-pink-600 shadow-md shadow-pink-500/20' : 'border-pink-100 hover:border-pink-300'}">
+            <div class="w-full h-16 rounded-xl mb-2 flex items-center justify-center text-white text-xl font-bold shadow-inner" style="${bg.cssStyle}">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <p class="text-xs font-bold text-gray-800 truncate">${bg.name}</p>
+          </div>
+        `).join('');
+        return;
+      }
+
+      const items = wardrobe[cat] || [];
+      container.innerHTML = items.map(item => {
+        let isSelected = false;
+        if (cat === 'hair') isSelected = doll.hairStyle === item.id;
+        else if (cat === 'tops') isSelected = doll.top === item.id && (!doll.dress || doll.dress === 'none');
+        else if (cat === 'bottoms') isSelected = doll.bottom === item.id && (!doll.dress || doll.dress === 'none');
+        else if (cat === 'dresses') isSelected = doll.dress === item.id;
+        else if (cat === 'shoes') isSelected = doll.shoes === item.id;
+        else if (cat === 'accessories') isSelected = doll.accessory === item.id;
+
+        return `
+          <div onclick="applyWardrobeItem('${cat}', '${item.id}')" class="wardrobe-card cursor-pointer p-3 rounded-2xl bg-white border-2 transition flex flex-col justify-between items-center ${isSelected ? 'border-pink-600 ring-2 ring-pink-200 shadow-md' : 'border-pink-100 hover:border-pink-300'}">
+            <div class="w-12 h-12 rounded-xl bg-pink-50 border border-pink-200 flex items-center justify-center text-pink-600 text-lg mb-2 shadow-inner" style="${item.color ? `background-color: ${item.color}20; color: ${item.color}; border-color: ${item.color};` : ''}">
+              <i class="fa-solid ${item.icon || 'fa-sparkles'}"></i>
+            </div>
+            <span class="text-xs font-bold text-gray-800 text-center leading-tight mb-1 truncate w-full">${item.name}</span>
+            <span class="text-[10px] text-gray-400 text-center truncate w-full">${item.desc || 'Oficial'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function applyWardrobeItem(cat, itemId) {
+      sound.playSparkle();
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      const doll = GAME_STATE.dolls[charKey];
+
+      if (cat === 'hair') doll.hairStyle = itemId;
+      else if (cat === 'tops') {
+        doll.top = itemId;
+        doll.dress = 'none'; // Unset dress if top is selected
+      } else if (cat === 'bottoms') {
+        doll.bottom = itemId;
+        doll.dress = 'none';
+      } else if (cat === 'dresses') {
+        doll.dress = itemId;
+      } else if (cat === 'shoes') doll.shoes = itemId;
+      else if (cat === 'accessories') doll.accessory = itemId;
+
+      updateGameView();
+    }
+
+    function changeHairColor(colorHex) {
+      sound.playPop();
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      GAME_STATE.dolls[charKey].hairColor = colorHex;
+      updateGameView();
+    }
+
+    function changeSkinTone(toneId) {
+      sound.playPop();
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      GAME_STATE.dolls[charKey].skin = toneId;
+      updateGameView();
+    }
+
+    function selectScenery(index) {
+      sound.playPop();
+      GAME_STATE.currentSceneryIndex = index;
+      const bg = SCENIC_BACKGROUNDS[index];
+      document.getElementById('scenery-layer').style.cssText = bg.cssStyle;
+      document.getElementById('label-scenery-name').innerText = bg.name;
+      renderWardrobeItems();
+      showToast(`Escenario: ${bg.name}`);
+    }
+    /* ==========================================================
+       SPECIAL ACTIONS (Randomizer, Iconic Looks, Collector Box)
+       ========================================================== */
+
+    function randomizeCurrentOutfit() {
+      sound.playSparkle();
+      const bHair = BARBIE_WARDROBE.hair[Math.floor(Math.random() * BARBIE_WARDROBE.hair.length)].id;
+      const bColor = HAIR_PALETTES[Math.floor(Math.random() * HAIR_PALETTES.length)].hex;
+      const bTop = BARBIE_WARDROBE.tops[Math.floor(Math.random() * BARBIE_WARDROBE.tops.length)].id;
+      const bBottom = BARBIE_WARDROBE.bottoms[Math.floor(Math.random() * BARBIE_WARDROBE.bottoms.length)].id;
+      const bShoes = BARBIE_WARDROBE.shoes[Math.floor(Math.random() * BARBIE_WARDROBE.shoes.length)].id;
+      const bAcc = BARBIE_WARDROBE.accessories[Math.floor(Math.random() * BARBIE_WARDROBE.accessories.length)].id;
+
+      GAME_STATE.dolls.barbie = {
+        skin: SKIN_OPTIONS[Math.floor(Math.random() * SKIN_OPTIONS.length)].id,
+        hairStyle: bHair,
+        hairColor: bColor,
+        top: bTop,
+        bottom: bBottom,
+        dress: Math.random() > 0.6 ? 'gala_ballgown' : 'none',
+        shoes: bShoes,
+        accessory: bAcc,
+        lipstick: '#ec4899'
+      };
+
+      const kHair = KEN_WARDROBE.hair[Math.floor(Math.random() * KEN_WARDROBE.hair.length)].id;
+      const kTop = KEN_WARDROBE.tops[Math.floor(Math.random() * KEN_WARDROBE.tops.length)].id;
+      const kBottom = KEN_WARDROBE.bottoms[Math.floor(Math.random() * KEN_WARDROBE.bottoms.length)].id;
+      const kShoes = KEN_WARDROBE.shoes[Math.floor(Math.random() * KEN_WARDROBE.shoes.length)].id;
+      const kAcc = KEN_WARDROBE.accessories[Math.floor(Math.random() * KEN_WARDROBE.accessories.length)].id;
+
+      GAME_STATE.dolls.ken = {
+        skin: SKIN_OPTIONS[Math.floor(Math.random() * SKIN_OPTIONS.length)].id,
+        hairStyle: kHair,
+        hairColor: HAIR_PALETTES[Math.floor(Math.random() * HAIR_PALETTES.length)].hex,
+        top: kTop,
+        bottom: kBottom,
+        shoes: kShoes,
+        accessory: kAcc,
+        lipstick: '#f43f5e'
+      };
+
+      updateGameView();
+      showToast("¡Estilismo sorpresa generado!");
+    }
+
+    function applySignatureStyle() {
+      sound.playSparkle();
+      // Sets the quintessential Margot & Ryan roller disco outfit match
+      GAME_STATE.dolls.barbie = {
+        skin: 'fair',
+        hairStyle: 'high_pony',
+        hairColor: '#fef08a',
+        top: 'roller_disco',
+        bottom: 'roller_shorts',
+        dress: 'none',
+        shoes: 'pink_roller',
+        accessory: 'roller_visor',
+        lipstick: '#ec4899'
+      };
+
+      GAME_STATE.dolls.ken = {
+        skin: 'tan',
+        hairStyle: 'surf_wave',
+        hairColor: '#facc15',
+        top: 'kenough_hoodie',
+        bottom: 'denim_shorts',
+        shoes: 'roller_yellow',
+        accessory: 'sunglasses_aviator',
+        lipstick: '#f43f5e'
+      };
+
+      updateGameView();
+      showToast("¡Outfit Oficial de Pasarela Aplicado!");
+    }
+
+    function resetCurrentDoll() {
+      sound.playPop();
+      const charKey = GAME_STATE.activeCharacter === 'ken' ? 'ken' : 'barbie';
+      if (charKey === 'barbie') {
+        GAME_STATE.dolls.barbie = {
+          skin: 'fair',
+          hairStyle: 'high_pony',
+          hairColor: '#fde047',
+          top: 'gingham_crop',
+          bottom: 'gingham_skirt',
+          dress: null,
+          shoes: 'pink_roller',
+          accessory: 'cat_sunglasses',
+          lipstick: '#e11d48'
+        };
+      } else {
+        GAME_STATE.dolls.ken = {
+          skin: 'tan',
+          hairStyle: 'surf_wave',
+          hairColor: '#f59e0b',
+          top: 'kenough_hoodie',
+          bottom: 'denim_shorts',
+          shoes: 'sneakers_white',
+          accessory: 'sunglasses_aviator',
+          lipstick: '#f43f5e'
+        };
+      }
+      updateGameView();
+      showToast("Estilo restablecido.");
+    }
+
+    function toggleDollBox() {
+      sound.playPop();
+      GAME_STATE.isBoxMode = !GAME_STATE.isBoxMode;
+      const boxBorder = document.getElementById('toy-box-border');
+      const boxGraphics = document.getElementById('box-overlay-graphics');
+      const btn = document.getElementById('btn-toggle-box');
+
+      if (GAME_STATE.isBoxMode) {
+        boxBorder.classList.remove('hidden');
+        boxGraphics.style.display = 'inline';
+        btn.classList.add('bg-pink-600', 'text-white');
+        btn.classList.remove('bg-pink-50', 'text-pink-600');
+        showToast("¡Modo Caja de Colección Activado!");
+      } else {
+        boxBorder.classList.add('hidden');
+        boxGraphics.style.display = 'none';
+        btn.classList.remove('bg-pink-600', 'text-white');
+        btn.classList.add('bg-pink-50', 'text-pink-600');
+        showToast("Modo Caja Desactivado.");
+      }
+    }
+
+    function toggleAudio() {
+      sound.enabled = !sound.enabled;
+      const icon = document.getElementById('sound-icon');
+      if (sound.enabled) {
+        icon.className = 'fa-solid fa-volume-high text-base';
+        sound.playPop();
+        showToast("Sonidos activados.");
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-base text-gray-400';
+        showToast("Sonidos desactivados.");
+      }
+    }
+
+    function showToast(message) {
+      const banner = document.getElementById('toast-banner');
+      document.getElementById('toast-text').innerText = message;
+      banner.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        banner.classList.add('translate-y-20', 'opacity-0');
+      }, 2400);
+    }
+    /* ==========================================================
+       PHOTO BOOTH & POLAROID EXPORT (SVG to HTML5 Canvas)
+       ========================================================== */
+
+    function openSnapshotModal() {
+      sound.playCamera();
+      const modal = document.getElementById('snapshot-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      // Draw SVG to Canvas for export
+      const svgElement = document.getElementById('doll-canvas');
+      const canvas = document.getElementById('export-canvas');
+      const ctx = canvas.getContext('2d');
+
+      const xml = new XMLSerializer().serializeToString(svgElement);
+      const svg64 = btoa(unescape(encodeURIComponent(xml)));
+      const b64Start = 'data:image/svg+xml;base64,';
+      const image64 = b64Start + svg64;
+
+      const img = new Image();
+      img.onload = function() {
+        // Draw scenic background gradient first
+        const bg = SCENIC_BACKGROUNDS[GAME_STATE.currentSceneryIndex];
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#fce7f3');
+        grad.addColorStop(0.5, '#f472b6');
+        grad.addColorStop(1, '#db2777');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw rendered dolls
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Watermark / Collector stamp
+        ctx.font = "bold 24px 'Dancing Script', cursive";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "right";
+        ctx.fillText("Barbie & Ken Studio", canvas.width - 24, canvas.height - 24);
+      };
+      img.src = image64;
+    }
+
+    function closeSnapshotModal() {
+      sound.playPop();
+      const modal = document.getElementById('snapshot-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function downloadSnapshotPNG() {
+      sound.playPop();
+      const canvas = document.getElementById('export-canvas');
+      const link = document.createElement('a');
+      link.download = `Barbie-y-Ken-Fashion-Studio-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      const toast = document.getElementById('modal-toast');
+      toast.innerText = "¡Foto descargada a tu galería!";
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+    }
+
+    function copySnapshotLink() {
+      sound.playPop();
+      // Using execCommand for safe iframe clipboard copy
+      const dummy = document.createElement('input');
+      document.body.appendChild(dummy);
+      dummy.value = window.location.href;
+      dummy.select();
+      document.execCommand('copy');
+      document.body.removeChild(dummy);
+
+      const toast = document.getElementById('modal-toast');
+      toast.innerText = "¡Enlace del estudio copiado!";
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+    }
+
+    // Sparkle Floating Elements Initializer
+    function initSparkles() {
+      const container = document.getElementById('sparkle-particles');
+      container.innerHTML = '';
+      for (let i = 0; i < 18; i++) {
+        const span = document.createElement('span');
+        const size = Math.random() * 12 + 6;
+        span.className = 'absolute text-yellow-300 font-bold select-none pointer-events-none animate-pulse';
+        span.style.left = `${Math.random() * 95}%`;
+        span.style.top = `${Math.random() * 95}%`;
+        span.style.fontSize = `${size}px`;
+        span.style.animationDuration = `${Math.random() * 2 + 1.5}s`;
+        span.innerHTML = '✦';
+        container.appendChild(span);
+      }
+    }
+
+    // Window Onload initialization
+    window.onload = function() {
+      selectScenery(0);
+      initSparkles();
+      updateGameView();
+    };
+  </script>
+</body>
+</html>
