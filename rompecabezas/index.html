@@ -1,1 +1,1291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rompecabezas Infantil: Leon y Amigos</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Fredoka & Quicksand for playful child-friendly typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Fredoka', 'Quicksand', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    .puzzle-board-shadow {
+      box-shadow: 0 16px 36px -8px rgba(217, 119, 6, 0.3), 0 8px 16px -4px rgba(217, 119, 6, 0.2);
+    }
 
+    .tile-highlight-target {
+      box-shadow: inset 0 0 0 4px #10B981, 0 0 16px rgba(16, 185, 129, 0.7);
+      background-color: rgba(209, 250, 229, 0.5) !important;
+      animation: pulseTarget 1.2s infinite ease-in-out;
+    }
+
+    @keyframes pulseTarget {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(0.97); }
+    }
+
+    .bounce-pop {
+      animation: bouncePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes bouncePop {
+      0% { transform: scale(0.8); opacity: 0.6; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    .floating-drag-piece {
+      pointer-events: none;
+      position: fixed;
+      z-index: 9999;
+      transform: translate(-50%, -50%) scale(1.08);
+      filter: drop-shadow(0 15px 25px rgba(0,0,0,0.3));
+      transition: none;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #FBBF24;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background-color: #FEF3C7;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 min-h-screen text-slate-800 flex flex-col items-center">
+
+  <header class="w-full max-w-5xl px-4 pt-3 pb-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-3xl shadow-md border-2 border-amber-300 transform -rotate-3 hover:rotate-0 transition-transform">
+        🦁
+      </div>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-amber-900 tracking-wide flex items-center gap-2">
+          Rompecabezas de Leon
+          <span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold border border-amber-300">¡Fácil de Entender!</span>
+        </h1>
+        <p class="text-xs text-amber-700">¡Mira el modelo y encaja cada pieza en su lugar correcto!</p>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border-2 border-amber-200 shadow-sm">
+      <div class="flex items-center gap-1.5 px-2">
+        <span class="text-lg">⏱️</span>
+        <span id="timerText" class="font-bold text-slate-700 text-sm sm:text-base">00:00</span>
+      </div>
+      <div class="h-5 w-0.5 bg-amber-200"></div>
+      <div class="flex items-center gap-1.5 px-2">
+        <span class="text-lg">🧩</span>
+        <span id="movesText" class="font-bold text-slate-700 text-sm sm:text-base">0 movs</span>
+      </div>
+      <div class="h-5 w-0.5 bg-amber-200"></div>
+      <button id="soundToggleBtn" class="text-lg hover:scale-110 active:scale-95 transition-transform p-1 rounded-lg text-amber-700 hover:bg-amber-100" title="Activar o Silenciar sonido">
+        🔊
+      </button>
+    </div>
+  </header>
+
+  <main class="w-full max-w-5xl px-3 sm:px-4 pb-8 flex-1 flex flex-col items-center">
+    
+    <!-- Controls Bar -->
+    <div class="w-full bg-white/95 backdrop-blur shadow-sm rounded-3xl p-3 mb-4 border-2 border-amber-200 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Scenes Selector -->
+      <div class="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
+        <span class="text-xs font-bold text-amber-800 uppercase tracking-wider hidden sm:inline ml-1">Dibujo:</span>
+        
+        <button class="image-thumb-btn ring-4 ring-amber-500 rounded-xl overflow-hidden w-12 h-12 flex-shrink-0 transition-transform active:scale-90 shadow" data-scene="tora_leon" title="Leon y Oficial Tora juntos">
+          <canvas id="thumb1" width="48" height="48" class="w-full h-full object-cover"></canvas>
+        </button>
+
+        <button class="image-thumb-btn opacity-60 hover:opacity-100 rounded-xl overflow-hidden w-12 h-12 flex-shrink-0 transition-all active:scale-90 shadow" data-scene="leon" title="Leon el Cachorro">
+          <canvas id="thumb2" width="48" height="48" class="w-full h-full object-cover"></canvas>
+        </button>
+
+        <button class="image-thumb-btn opacity-60 hover:opacity-100 rounded-xl overflow-hidden w-12 h-12 flex-shrink-0 transition-all active:scale-90 shadow" data-scene="tora" title="Oficial Tora">
+          <canvas id="thumb3" width="48" height="48" class="w-full h-full object-cover"></canvas>
+        </button>
+
+        <!-- Custom Upload button -->
+        <label for="imageUploadInput" class="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl w-12 h-12 flex flex-col items-center justify-center flex-shrink-0 transition-transform active:scale-90 border-2 border-dashed border-amber-400" title="Cargar tu propia foto">
+          <span class="text-lg">📷</span>
+          <span class="text-[9px] font-bold">Subir</span>
+          <input type="file" id="imageUploadInput" accept="image/*" class="hidden">
+        </label>
+      </div>
+
+      <!-- Difficulty & Helper Toggles -->
+      <div class="flex items-center flex-wrap gap-2 ml-auto">
+        <!-- Difficulty Selection -->
+        <div class="flex bg-amber-100 p-1 rounded-2xl border border-amber-300">
+          <button class="diff-btn px-3 py-1 text-xs font-bold rounded-xl transition-all bg-amber-500 text-white shadow-sm" data-size="2">
+            2x2 <span class="text-[10px] opacity-90">(4 piezas)</span>
+          </button>
+          <button class="diff-btn px-3 py-1 text-xs font-bold rounded-xl transition-all text-amber-800 hover:bg-amber-200" data-size="3">
+            3x3 <span class="text-[10px] opacity-90">(9 piezas)</span>
+          </button>
+          <button class="diff-btn px-3 py-1 text-xs font-bold rounded-xl transition-all text-amber-800 hover:bg-amber-200" data-size="4">
+            4x4 <span class="text-[10px] opacity-90">(16 piezas)</span>
+          </button>
+        </div>
+
+        <!-- Help Numbers Toggle -->
+        <button id="numbersHelpBtn" class="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-900 font-bold rounded-2xl border border-yellow-300 text-xs transition-transform active:scale-95 shadow-sm" title="Muestra números en las piezas y el tablero">
+          <span>🔢</span>
+          <span id="numbersHelpText">Números: ON</span>
+        </button>
+
+        <!-- Ghost Guide Slider / Button -->
+        <button id="guideOpacityBtn" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-2xl border border-emerald-300 text-xs transition-transform active:scale-95 shadow-sm" title="Cambiar transparencia de la imagen guía">
+          <span>👀</span>
+          <span id="guideOpacityText">Guía: Clara (40%)</span>
+        </button>
+
+        <!-- Restart Button -->
+        <button id="restartBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md border-b-4 border-amber-700 text-xs transition-transform active:scale-95">
+          <span>🔄</span>
+          <span>Reiniciar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="w-full flex flex-col lg:flex-row items-center justify-center gap-5 sm:gap-6">
+      
+      <!-- Left Column: Sample Reference Image ("Así debe quedar") -->
+      <div class="flex flex-col items-center order-2 lg:order-1">
+        <div class="bg-white/95 rounded-3xl p-3 border-2 border-amber-200 shadow-md flex flex-col items-center w-full max-w-[220px]">
+          <div class="flex items-center justify-between w-full mb-1.5 px-1">
+            <span class="text-xs font-bold text-amber-900 flex items-center gap-1">
+              <span>🖼️</span> Modelo final
+            </span>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">Guía</span>
+          </div>
+          
+          <div class="relative w-40 h-40 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-inner bg-amber-50">
+            <img id="sampleReferenceImg" class="w-full h-full object-cover select-none" alt="Modelo a armar">
+          </div>
+          <p class="text-[11px] text-center text-amber-700 mt-2 font-medium">
+            ¡Así debe verse cuando termines todas las piezas!
+          </p>
+        </div>
+      </div>
+
+      <!-- Center: Main Board Drop Zones -->
+      <div class="flex flex-col items-center order-1 lg:order-2">
+        <div class="relative bg-gradient-to-b from-amber-200 to-amber-300 p-3 sm:p-4 rounded-3xl border-4 border-amber-400 puzzle-board-shadow">
+          
+          <!-- Board container with Grid -->
+          <div id="boardContainer" class="relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] md:w-[420px] md:h-[420px] bg-amber-50 rounded-2xl overflow-hidden border-3 border-dashed border-amber-400 grid">
+            
+            <!-- Ghost guide background -->
+            <img id="ghostImage" class="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none transition-opacity duration-300 select-none" alt="Guía visual">
+            
+            <!-- Grid cells generated dynamically -->
+          </div>
+
+          <!-- Helper instructions badge -->
+          <div class="mt-2.5 flex items-center justify-between px-2">
+            <span class="text-xs font-bold text-amber-900 bg-white/80 px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+              <span>🎯</span> Arrastra o toca aquí
+            </span>
+            <span id="piecesRemaining" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+              0 de 4 colocadas
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Piece Tray with Pieces -->
+      <div class="w-full lg:w-80 flex flex-col items-center order-3">
+        <div class="w-full bg-white/95 rounded-3xl p-4 border-2 border-amber-200 shadow-md">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+              <span>🎒</span> Piezas sueltas
+            </h2>
+            <button id="shuffleTrayBtn" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 shadow-sm">
+              <span>🔀</span> Mezclar
+            </button>
+          </div>
+
+          <!-- Clear friendly instructions for children and parents -->
+          <div class="bg-amber-50 rounded-2xl p-2.5 mb-3 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+            <span class="text-lg leading-none mt-0.5">💡</span>
+            <p>
+              <strong>2 formas de jugar:</strong><br>
+              1. <strong>Arrastra</strong> la pieza con el dedo o ratón al tablero.<br>
+              2. O <strong>toca una pieza</strong> y luego toca la casilla verde que se ilumina.
+            </p>
+          </div>
+
+          <!-- Tray Drawer for pieces -->
+          <div id="trayContainer" class="custom-scrollbar min-h-[170px] max-h-[380px] overflow-y-auto p-2.5 bg-amber-100/60 rounded-2xl border-2 border-dashed border-amber-300 flex flex-wrap gap-3 justify-center items-center">
+            <!-- Piece canvas cards populated here -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="victoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl border-4 border-amber-400 p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col items-center text-center transform scale-90 transition-transform duration-300 relative overflow-hidden">
+      
+      <div class="absolute -top-16 -right-16 w-36 h-36 bg-amber-200 rounded-full blur-2xl"></div>
+      <div class="absolute -bottom-16 -left-16 w-36 h-36 bg-orange-200 rounded-full blur-2xl"></div>
+
+      <div class="w-24 h-24 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-3xl flex items-center justify-center text-5xl shadow-lg border-4 border-white mb-4 bounce-pop">
+        🏆
+      </div>
+
+      <h3 class="text-2xl sm:text-3xl font-bold text-amber-950 mb-1">¡Excelente trabajo!</h3>
+      <p class="text-amber-700 font-medium text-sm sm:text-base mb-4">
+        ¡Has completado el rompecabezas de Leon y el Oficial Tora a la perfección!
+      </p>
+
+      <div class="w-full bg-amber-50 rounded-2xl p-4 border border-amber-200 grid grid-cols-2 gap-3 mb-6">
+        <div class="text-center">
+          <div class="text-xs uppercase font-bold text-amber-600">Tiempo</div>
+          <div id="modalTime" class="text-xl font-bold text-amber-900">00:00</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs uppercase font-bold text-amber-600">Movimientos</div>
+          <div id="modalMoves" class="text-xl font-bold text-amber-900">0</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 w-full">
+        <button id="modalNextLevelBtn" class="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl shadow-md border-b-4 border-emerald-700 transition-transform active:scale-95 flex items-center justify-center gap-2">
+          <span>⭐</span> Siguiente Nivel
+        </button>
+        <button id="modalPlayAgainBtn" class="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md border-b-4 border-amber-700 transition-transform active:scale-95 flex items-center justify-center gap-2">
+          <span>🔄</span> Jugar de nuevo
+        </button>
+      </div>
+
+      <button id="closeModalX" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold p-1">
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <!-- Custom Alert Toast Message -->
+  <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-lg pointer-events-none transition-all duration-300 opacity-0 transform translate-y-3 z-50 flex items-center gap-2 border border-slate-700">
+    <span id="toastIcon">💡</span>
+    <span id="toastMessage">¡Ánimo!</span>
+  </div>
+
+  <!-- Floating Drag Element for Smooth Mobile & Touch Dragging -->
+  <div id="floatingDragContainer" class="floating-drag-piece hidden"></div>
+
+  <script>
+    /* Web Audio API Sound Effects (Synthesized procedurally without external URLs) */
+    const AudioEngine = {
+      ctx: null,
+      enabled: true,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.ctx = new AudioContextClass();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+
+      playPop() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const now = this.ctx.currentTime;
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.08);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } catch (e) {}
+      },
+
+      playSnap() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          const now = this.ctx.currentTime;
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.12); // G5
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.24);
+        } catch (e) {}
+      },
+
+      playWrong() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          const now = this.ctx.currentTime;
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.exponentialRampToValueAtTime(130, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } catch (e) {}
+      },
+
+      playVictory() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 fanfare
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            const startTime = this.ctx.currentTime + (idx * 0.12);
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.35, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.42);
+          });
+        } catch (e) {}
+      }
+    };
+
+    const ArtGenerator = {
+      // Scene 1: Leon and Officer Tora Together
+      createLeonAndToraSVG() {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+            <defs>
+              <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#BAE6FD"/>
+                <stop offset="60%" stop-color="#E0F2FE"/>
+                <stop offset="100%" stop-color="#FEF3C7"/>
+              </linearGradient>
+              <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#86EFAC"/>
+                <stop offset="100%" stop-color="#22C55E"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Bright colorful background with grass and sun -->
+            <rect width="600" height="600" fill="url(#skyGrad)" />
+            <circle cx="510" cy="85" r="48" fill="#FDE047" opacity="0.9"/>
+            <circle cx="510" cy="85" r="58" fill="#FEF08A" opacity="0.4"/>
+            <path d="M60 110 Q85 80 115 90 Q145 75 175 100 Q205 105 205 130 Q205 150 175 150 L80 150 Q50 150 60 110 Z" fill="#FFFFFF" opacity="0.9"/>
+            <path d="M380 140 Q400 120 425 125 Q450 115 470 135 Q490 140 490 160 L380 160 Z" fill="#FFFFFF" opacity="0.75"/>
+
+            <!-- Meadow -->
+            <ellipse cx="200" cy="590" rx="350" ry="120" fill="url(#grassGrad)"/>
+            <ellipse cx="480" cy="580" rx="260" ry="100" fill="#4ADE80"/>
+
+            <!-- Flowers -->
+            <circle cx="75" cy="535" r="8" fill="#F43F5E"/><circle cx="75" cy="535" r="4" fill="#FDE047"/>
+            <circle cx="530" cy="545" r="9" fill="#EC4899"/><circle cx="530" cy="545" r="4" fill="#FDE047"/>
+            <circle cx="280" cy="565" r="7" fill="#A855F7"/><circle cx="280" cy="565" r="3" fill="#FDE047"/>
+
+            <!-- === OFFICER TORA (TIGER IN BLUE UNIFORM) === -->
+            <g transform="translate(100, 110)">
+              <!-- Tiger Striped Tail -->
+              <path d="M 40 330 Q -10 320 -15 290 Q -20 260 5 250" fill="none" stroke="#F97316" stroke-width="26" stroke-linecap="round"/>
+              <path d="M 28 326 L 23 318" stroke="#1E293B" stroke-width="8" stroke-linecap="round"/>
+              <path d="M 10 312 L 3 304" stroke="#1E293B" stroke-width="8" stroke-linecap="round"/>
+              <path d="M -7 286 L -2 280" stroke="#1E293B" stroke-width="8" stroke-linecap="round"/>
+
+              <!-- Police Uniform Jacket & Pants -->
+              <path d="M 60 240 L 50 340 Q 120 360 190 340 L 180 240 Z" fill="#1E3A8A"/>
+              <rect x="70" y="330" width="45" height="40" rx="10" fill="#1E3A8A"/>
+              <rect x="135" y="330" width="45" height="40" rx="10" fill="#1E3A8A"/>
+              
+              <!-- Paws -->
+              <ellipse cx="92" cy="375" rx="26" ry="14" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <ellipse cx="158" cy="375" rx="26" ry="14" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+
+              <!-- Shirt Collar & Necktie -->
+              <path d="M 85 230 L 120 275 L 155 230 Z" fill="#FFFFFF"/>
+              <path d="M 112 235 L 128 235 L 124 280 L 116 280 Z" fill="#0F172A"/>
+              <circle cx="120" cy="295" r="5" fill="#FACC15" stroke="#B45309" stroke-width="2"/>
+              <circle cx="120" cy="320" r="5" fill="#FACC15" stroke="#B45309" stroke-width="2"/>
+              <!-- Badge -->
+              <path d="M 145 285 L 160 285 L 160 298 Q 152 308 145 300 Z" fill="#FACC15" stroke="#B45309" stroke-width="2"/>
+
+              <!-- Traffic Baton Arm -->
+              <path d="M 175 240 Q 215 245 220 210" fill="none" stroke="#1E3A8A" stroke-width="36" stroke-linecap="round"/>
+              <circle cx="218" cy="205" r="16" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <g transform="translate(216, 110) rotate(15)">
+                <rect x="-8" y="0" width="16" height="95" rx="7" fill="#0F172A"/>
+                <rect x="-6" y="10" width="12" height="15" fill="#FFFFFF"/>
+                <rect x="-6" y="35" width="12" height="15" fill="#FFFFFF"/>
+                <rect x="-6" y="60" width="12" height="15" fill="#FFFFFF"/>
+              </g>
+
+              <!-- Left Rest Arm -->
+              <path d="M 65 240 Q 40 270 45 310" fill="none" stroke="#1E3A8A" stroke-width="36" stroke-linecap="round"/>
+              <circle cx="45" cy="315" r="16" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+
+              <!-- Tiger Head -->
+              <ellipse cx="120" cy="170" rx="75" ry="65" fill="#F97316" stroke="#451A03" stroke-width="5"/>
+              <circle cx="65" cy="110" r="22" fill="#F97316" stroke="#451A03" stroke-width="5"/><circle cx="65" cy="110" r="13" fill="#FEE2E2"/>
+              <circle cx="175" cy="110" r="22" fill="#F97316" stroke="#451A03" stroke-width="5"/><circle cx="175" cy="110" r="13" fill="#FEE2E2"/>
+              <ellipse cx="120" cy="185" rx="55" ry="40" fill="#FFFFFF"/>
+
+              <!-- Stripes -->
+              <path d="M 52 160 Q 72 163 80 170" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <path d="M 52 185 Q 70 186 76 190" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <path d="M 188 160 Q 168 163 160 170" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <path d="M 188 185 Q 170 186 164 190" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+
+              <!-- Eyes & Face -->
+              <ellipse cx="95" cy="160" rx="9" ry="12" fill="#1E293B"/><circle cx="92" cy="156" r="3.5" fill="#FFFFFF"/>
+              <ellipse cx="145" cy="160" rx="9" ry="12" fill="#1E293B"/><circle cx="142" cy="156" r="3.5" fill="#FFFFFF"/>
+              <polygon points="112,175 128,175 120,185" fill="#1E293B"/>
+              <path d="M 120 185 L 120 193 Q 110 205 100 195 M 120 193 Q 130 205 140 195" fill="none" stroke="#1E293B" stroke-width="4" stroke-linecap="round"/>
+
+              <!-- Police Cap -->
+              <path d="M 50 120 Q 120 70 190 120 L 175 135 Q 120 110 65 135 Z" fill="#1E3A8A" stroke="#0F172A" stroke-width="4"/>
+              <ellipse cx="120" cy="125" rx="65" ry="12" fill="#0F172A"/>
+              <path d="M 75 120 Q 120 105 165 120" stroke="#FACC15" stroke-width="5"/>
+              <path d="M 112 98 L 128 98 L 125 115 L 120 120 L 115 115 Z" fill="#FACC15" stroke="#92400E" stroke-width="2"/>
+            </g>
+
+            <!-- === LEON THE CUB (SITTING NEXT TO TORA) === -->
+            <g transform="translate(325, 235)">
+              <!-- Fluffy Orange Mane -->
+              <g fill="#FB923C" stroke="#7C2D12" stroke-width="4">
+                <circle cx="85" cy="60" r="38"/><circle cx="140" cy="65" r="42"/>
+                <circle cx="185" cy="100" r="40"/><circle cx="205" cy="155" r="38"/>
+                <circle cx="190" cy="210" r="40"/><circle cx="145" cy="245" r="40"/>
+                <circle cx="85" cy="245" r="40"/><circle cx="35" cy="210" r="40"/>
+                <circle cx="20" cy="155" r="38"/><circle cx="35" cy="100" r="40"/>
+              </g>
+
+              <!-- Ears -->
+              <circle cx="45" cy="70" r="24" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/><circle cx="45" cy="70" r="14" fill="#FDBA74"/>
+              <circle cx="185" cy="70" r="24" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/><circle cx="185" cy="70" r="14" fill="#FDBA74"/>
+
+              <!-- Lion Face -->
+              <circle cx="115" cy="155" r="68" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/>
+
+              <!-- Big Cute Eyes -->
+              <ellipse cx="88" cy="145" rx="15" ry="18" fill="#451A03"/><circle cx="82" cy="138" r="6" fill="#FFFFFF"/><circle cx="94" cy="152" r="3" fill="#FFFFFF"/>
+              <ellipse cx="142" cy="145" rx="15" ry="18" fill="#451A03"/><circle cx="136" cy="138" r="6" fill="#FFFFFF"/><circle cx="148" cy="152" r="3" fill="#FFFFFF"/>
+
+              <!-- Cheeks -->
+              <ellipse cx="68" cy="165" rx="12" ry="7" fill="#F87171" opacity="0.6"/>
+              <ellipse cx="162" cy="165" rx="12" ry="7" fill="#F87171" opacity="0.6"/>
+
+              <!-- Snout & Smile -->
+              <ellipse cx="115" cy="172" rx="26" ry="18" fill="#FEF08A"/>
+              <polygon points="110,165 120,165 115,172" fill="#451A03"/>
+              <path d="M 115 172 L 115 178 Q 106 186 98 178 M 115 178 Q 124 186 132 178" fill="none" stroke="#451A03" stroke-width="3" stroke-linecap="round"/>
+
+              <!-- Cub Body & Paws -->
+              <path d="M 75 220 C 60 270 65 300 70 310 Q 115 320 160 310 C 165 300 170 270 155 220 Z" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/>
+              <path d="M 155 290 Q 210 290 200 240" fill="none" stroke="#FDE047" stroke-width="12" stroke-linecap="round"/>
+              <path d="M 195 240 Q 215 220 220 235 Q 215 260 195 245 Z" fill="#FB923C" stroke="#7C2D12" stroke-width="3"/>
+              <ellipse cx="85" cy="308" rx="20" ry="14" fill="#FEF08A" stroke="#7C2D12" stroke-width="3"/>
+              <ellipse cx="145" cy="308" rx="20" ry="14" fill="#FEF08A" stroke="#7C2D12" stroke-width="3"/>
+            </g>
+          </svg>
+        `;
+      },
+
+      // Scene 2: Leon Solo
+      createLeonOnlySVG() {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+            <defs>
+              <linearGradient id="bgLion" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FEF9C3"/>
+                <stop offset="100%" stop-color="#FED7AA"/>
+              </linearGradient>
+            </defs>
+            <rect width="600" height="600" fill="url(#bgLion)"/>
+            <circle cx="300" cy="300" r="260" fill="#FEF08A" opacity="0.6"/>
+            <g transform="translate(130, 80) scale(1.4)">
+              <g fill="#FB923C" stroke="#7C2D12" stroke-width="4">
+                <circle cx="85" cy="60" r="38"/><circle cx="140" cy="65" r="42"/>
+                <circle cx="185" cy="100" r="40"/><circle cx="205" cy="155" r="38"/>
+                <circle cx="190" cy="210" r="40"/><circle cx="145" cy="245" r="40"/>
+                <circle cx="85" cy="245" r="40"/><circle cx="35" cy="210" r="40"/>
+                <circle cx="20" cy="155" r="38"/><circle cx="35" cy="100" r="40"/>
+              </g>
+              <circle cx="45" cy="70" r="24" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/><circle cx="45" cy="70" r="14" fill="#FDBA74"/>
+              <circle cx="185" cy="70" r="24" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/><circle cx="185" cy="70" r="14" fill="#FDBA74"/>
+              <circle cx="115" cy="155" r="68" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/>
+              <ellipse cx="88" cy="145" rx="15" ry="18" fill="#451A03"/><circle cx="82" cy="138" r="6" fill="#FFFFFF"/><circle cx="94" cy="152" r="3" fill="#FFFFFF"/>
+              <ellipse cx="142" cy="145" rx="15" ry="18" fill="#451A03"/><circle cx="136" cy="138" r="6" fill="#FFFFFF"/><circle cx="148" cy="152" r="3" fill="#FFFFFF"/>
+              <ellipse cx="68" cy="165" rx="12" ry="7" fill="#F87171" opacity="0.6"/>
+              <ellipse cx="162" cy="165" rx="12" ry="7" fill="#F87171" opacity="0.6"/>
+              <ellipse cx="115" cy="172" rx="26" ry="18" fill="#FEF08A"/>
+              <polygon points="110,165 120,165 115,172" fill="#451A03"/>
+              <path d="M 115 172 L 115 178 Q 106 186 98 178 M 115 178 Q 124 186 132 178" fill="none" stroke="#451A03" stroke-width="3" stroke-linecap="round"/>
+              <path d="M 75 220 C 60 270 65 300 70 310 Q 115 320 160 310 C 165 300 170 270 155 220 Z" fill="#FDE047" stroke="#7C2D12" stroke-width="4"/>
+              <path d="M 155 290 Q 210 290 200 240" fill="none" stroke="#FDE047" stroke-width="12" stroke-linecap="round"/>
+              <path d="M 195 240 Q 215 220 220 235 Q 215 260 195 245 Z" fill="#FB923C" stroke="#7C2D12" stroke-width="3"/>
+              <ellipse cx="85" cy="308" rx="20" ry="14" fill="#FEF08A" stroke="#7C2D12" stroke-width="3"/>
+              <ellipse cx="145" cy="308" rx="20" ry="14" fill="#FEF08A" stroke="#7C2D12" stroke-width="3"/>
+            </g>
+          </svg>
+        `;
+      },
+
+      // Scene 3: Officer Tora Solo
+      createToraOnlySVG() {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+            <defs>
+              <linearGradient id="bgTora" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#DBEAFE"/>
+                <stop offset="100%" stop-color="#93C5FD"/>
+              </linearGradient>
+            </defs>
+            <rect width="600" height="600" fill="url(#bgTora)"/>
+            <circle cx="300" cy="300" r="260" fill="#EFF6FF" opacity="0.75"/>
+            <g transform="translate(180, 80) scale(1.35)">
+              <path d="M 40 340 Q -10 330 -15 300 Q -20 270 5 260" fill="none" stroke="#F97316" stroke-width="26" stroke-linecap="round"/>
+              <path d="M 30 336 L 25 328" stroke="#1E293B" stroke-width="8" stroke-linecap="round"/>
+              <path d="M 12 322 L 5 314" stroke="#1E293B" stroke-width="8" stroke-linecap="round"/>
+              <path d="M 60 250 L 50 350 Q 120 370 190 350 L 180 250 Z" fill="#1E3A8A"/>
+              <rect x="70" y="340" width="45" height="40" rx="10" fill="#1E3A8A"/>
+              <rect x="135" y="340" width="45" height="40" rx="10" fill="#1E3A8A"/>
+              <ellipse cx="92" cy="385" rx="26" ry="14" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <ellipse cx="158" cy="385" rx="26" ry="14" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <path d="M 85 240 L 120 285 L 155 240 Z" fill="#FFFFFF"/>
+              <path d="M 112 245 L 128 245 L 124 290 L 116 290 Z" fill="#0F172A"/>
+              <circle cx="120" cy="305" r="5" fill="#FACC15"/>
+              <circle cx="120" cy="330" r="5" fill="#FACC15"/>
+              <path d="M 145 295 L 160 295 L 160 308 Q 152 318 145 310 Z" fill="#FACC15" stroke="#B45309" stroke-width="2"/>
+              <path d="M 175 250 Q 215 255 220 220" fill="none" stroke="#1E3A8A" stroke-width="38" stroke-linecap="round"/>
+              <circle cx="218" cy="215" r="16" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <g transform="translate(216, 120) rotate(15)">
+                <rect x="-8" y="0" width="16" height="95" rx="7" fill="#0F172A"/>
+                <rect x="-6" y="10" width="12" height="15" fill="#FFFFFF"/>
+                <rect x="-6" y="35" width="12" height="15" fill="#FFFFFF"/>
+                <rect x="-6" y="60" width="12" height="15" fill="#FFFFFF"/>
+              </g>
+              <path d="M 65 250 Q 40 280 45 320" fill="none" stroke="#1E3A8A" stroke-width="38" stroke-linecap="round"/>
+              <circle cx="45" cy="325" r="16" fill="#F97316" stroke="#451A03" stroke-width="4"/>
+              <ellipse cx="120" cy="180" rx="75" ry="65" fill="#F97316" stroke="#451A03" stroke-width="5"/>
+              <circle cx="65" cy="120" r="22" fill="#F97316" stroke="#451A03" stroke-width="5"/><circle cx="65" cy="120" r="13" fill="#FEE2E2"/>
+              <circle cx="175" cy="120" r="22" fill="#F97316" stroke="#451A03" stroke-width="5"/><circle cx="175" cy="120" r="13" fill="#FEE2E2"/>
+              <ellipse cx="120" cy="195" rx="55" ry="40" fill="#FFFFFF"/>
+              <path d="M 52 170 Q 72 173 80 180" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <path d="M 188 170 Q 168 173 160 180" fill="none" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <path d="M 120 120 L 120 135" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+              <ellipse cx="95" cy="170" rx="9" ry="12" fill="#1E293B"/><circle cx="92" cy="166" r="3.5" fill="#FFFFFF"/>
+              <ellipse cx="145" cy="170" rx="9" ry="12" fill="#1E293B"/><circle cx="142" cy="166" r="3.5" fill="#FFFFFF"/>
+              <polygon points="112,185 128,185 120,195" fill="#1E293B"/>
+              <path d="M 120 195 L 120 203 Q 110 215 100 205 M 120 203 Q 130 215 140 205" fill="none" stroke="#1E293B" stroke-width="4" stroke-linecap="round"/>
+              <path d="M 50 130 Q 120 80 190 130 L 175 145 Q 120 120 65 145 Z" fill="#1E3A8A" stroke="#0F172A" stroke-width="4"/>
+              <ellipse cx="120" cy="135" rx="65" ry="12" fill="#0F172A"/>
+              <path d="M 75 130 Q 120 115 165 130" stroke="#FACC15" stroke-width="5"/>
+              <path d="M 112 108 L 128 108 L 125 125 L 120 130 L 115 125 Z" fill="#FACC15" stroke="#92400E" stroke-width="2"/>
+            </g>
+          </svg>
+        `;
+      }
+    };
+
+    class PuzzleGame {
+      constructor() {
+        this.gridSize = 2; // Default 2x2 for kids
+        this.currentScene = 'tora_leon';
+        this.sourceImage = new Image();
+        this.isImageLoaded = false;
+        
+        // Progress tracking
+        this.moves = 0;
+        this.seconds = 0;
+        this.timerInterval = null;
+        this.isGameActive = false;
+
+        // Visual help settings
+        this.showNumbers = true;
+        this.guideOpacityLevel = 1; // 0: 15%, 1: 40%, 2: 70%
+        this.opacityValues = [0.15, 0.40, 0.70];
+        this.opacityLabels = ["Mínima (15%)", "Clara (40%)", "Fuerte (70%)"];
+
+        // Pieces & placement
+        this.placedCount = 0;
+        this.totalPieces = 4;
+        this.selectedPieceIndex = null;
+
+        // Mobile touch drag data
+        this.touchActive = false;
+        this.activeTouchIndex = null;
+        this.activeTouchCard = null;
+
+        // DOM elements cache
+        this.boardContainer = document.getElementById('boardContainer');
+        this.trayContainer = document.getElementById('trayContainer');
+        this.ghostImage = document.getElementById('ghostImage');
+        this.sampleReferenceImg = document.getElementById('sampleReferenceImg');
+        this.timerText = document.getElementById('timerText');
+        this.movesText = document.getElementById('movesText');
+        this.piecesRemaining = document.getElementById('piecesRemaining');
+        this.numbersHelpBtn = document.getElementById('numbersHelpBtn');
+        this.numbersHelpText = document.getElementById('numbersHelpText');
+        this.guideOpacityBtn = document.getElementById('guideOpacityBtn');
+        this.guideOpacityText = document.getElementById('guideOpacityText');
+        this.soundToggleBtn = document.getElementById('soundToggleBtn');
+        this.restartBtn = document.getElementById('restartBtn');
+        this.shuffleTrayBtn = document.getElementById('shuffleTrayBtn');
+        this.victoryModal = document.getElementById('victoryModal');
+        this.modalTime = document.getElementById('modalTime');
+        this.modalMoves = document.getElementById('modalMoves');
+        this.modalNextLevelBtn = document.getElementById('modalNextLevelBtn');
+        this.modalPlayAgainBtn = document.getElementById('modalPlayAgainBtn');
+        this.closeModalX = document.getElementById('closeModalX');
+        this.imageUploadInput = document.getElementById('imageUploadInput');
+        this.floatingDragContainer = document.getElementById('floatingDragContainer');
+        
+        this.init();
+      }
+
+      init() {
+        this.renderThumbnails();
+        this.loadScene(this.currentScene);
+        this.setupEventListeners();
+        this.setupPointerDrag();
+      }
+
+      setupEventListeners() {
+        // Difficulty selectors
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const size = parseInt(e.currentTarget.dataset.size, 10);
+            if (this.gridSize !== size) {
+              document.querySelectorAll('.diff-btn').forEach(b => {
+                b.classList.remove('bg-amber-500', 'text-white', 'shadow-sm');
+                b.classList.add('text-amber-800', 'hover:bg-amber-200');
+              });
+              e.currentTarget.classList.add('bg-amber-500', 'text-white', 'shadow-sm');
+              e.currentTarget.classList.remove('text-amber-800', 'hover:bg-amber-200');
+              this.gridSize = size;
+              AudioEngine.playPop();
+              this.resetGame();
+            }
+          });
+        });
+
+        // Scene selectors
+        document.querySelectorAll('.image-thumb-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const scene = e.currentTarget.dataset.scene;
+            document.querySelectorAll('.image-thumb-btn').forEach(b => {
+              b.classList.remove('ring-4', 'ring-amber-500', 'opacity-100');
+              b.classList.add('opacity-60');
+            });
+            e.currentTarget.classList.add('ring-4', 'ring-amber-500', 'opacity-100');
+            e.currentTarget.classList.remove('opacity-60');
+            this.loadScene(scene);
+            AudioEngine.playPop();
+          });
+        });
+
+        // Toggle numbers help
+        this.numbersHelpBtn.addEventListener('click', () => {
+          this.showNumbers = !this.showNumbers;
+          this.numbersHelpText.textContent = this.showNumbers ? "Números: ON" : "Números: OFF";
+          if (this.showNumbers) {
+            this.numbersHelpBtn.classList.remove('bg-gray-100', 'text-gray-600', 'border-gray-300');
+            this.numbersHelpBtn.classList.add('bg-yellow-100', 'text-yellow-900', 'border-yellow-300');
+          } else {
+            this.numbersHelpBtn.classList.add('bg-gray-100', 'text-gray-600', 'border-gray-300');
+            this.numbersHelpBtn.classList.remove('bg-yellow-100', 'text-yellow-900', 'border-yellow-300');
+          }
+          this.updateNumberBadgesVisibility();
+          AudioEngine.playPop();
+        });
+
+        // Toggle ghost guide opacity
+        this.guideOpacityBtn.addEventListener('click', () => {
+          this.guideOpacityLevel = (this.guideOpacityLevel + 1) % 3;
+          const val = this.opacityValues[this.guideOpacityLevel];
+          this.ghostImage.style.opacity = val;
+          this.guideOpacityText.textContent = `Guía: ${this.opacityLabels[this.guideOpacityLevel]}`;
+          AudioEngine.playPop();
+        });
+
+        // Restart and shuffle
+        this.restartBtn.addEventListener('click', () => {
+          AudioEngine.playPop();
+          this.resetGame();
+        });
+
+        this.shuffleTrayBtn.addEventListener('click', () => {
+          AudioEngine.playPop();
+          this.shuffleTray();
+        });
+
+        // Sound toggle
+        this.soundToggleBtn.addEventListener('click', () => {
+          AudioEngine.enabled = !AudioEngine.enabled;
+          this.soundToggleBtn.textContent = AudioEngine.enabled ? '🔊' : '🔇';
+          this.showToast(AudioEngine.enabled ? "Sonido activado" : "Sonido apagado", AudioEngine.enabled ? '🔊' : '🔇');
+        });
+
+        // Upload custom image
+        this.imageUploadInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              this.sourceImage = new Image();
+              this.sourceImage.onload = () => {
+                this.isImageLoaded = true;
+                this.ghostImage.src = this.sourceImage.src;
+                this.sampleReferenceImg.src = this.sourceImage.src;
+                document.querySelectorAll('.image-thumb-btn').forEach(b => {
+                  b.classList.remove('ring-4', 'ring-amber-500', 'opacity-100');
+                  b.classList.add('opacity-60');
+                });
+                this.resetGame();
+                this.showToast("¡Tu foto está cargada en el rompecabezas!", "🎉");
+              };
+              this.sourceImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // Victory modal buttons
+        this.modalPlayAgainBtn.addEventListener('click', () => {
+          this.hideVictoryModal();
+          this.resetGame();
+        });
+
+        this.modalNextLevelBtn.addEventListener('click', () => {
+          this.hideVictoryModal();
+          if (this.gridSize < 4) {
+            const nextSize = this.gridSize + 1;
+            const targetBtn = document.querySelector(`.diff-btn[data-size="${nextSize}"]`);
+            if (targetBtn) targetBtn.click();
+          } else {
+            const scenes = ['tora_leon', 'leon', 'tora'];
+            const currentIndex = scenes.indexOf(this.currentScene);
+            const nextScene = scenes[(currentIndex + 1) % scenes.length];
+            const targetThumb = document.querySelector(`.image-thumb-btn[data-scene="${nextScene}"]`);
+            if (targetThumb) targetThumb.click();
+          }
+        });
+
+        this.closeModalX.addEventListener('click', () => {
+          this.hideVictoryModal();
+        });
+      }
+
+      renderThumbnails() {
+        const scenes = [
+          { id: 'thumb1', svg: ArtGenerator.createLeonAndToraSVG() },
+          { id: 'thumb2', svg: ArtGenerator.createLeonOnlySVG() },
+          { id: 'thumb3', svg: ArtGenerator.createToraOnlySVG() }
+        ];
+
+        scenes.forEach(item => {
+          const canvas = document.getElementById(item.id);
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, 48, 48);
+          };
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(item.svg);
+        });
+      }
+
+      loadScene(sceneKey) {
+        this.currentScene = sceneKey;
+        let svgCode = '';
+        if (sceneKey === 'tora_leon') svgCode = ArtGenerator.createLeonAndToraSVG();
+        else if (sceneKey === 'leon') svgCode = ArtGenerator.createLeonOnlySVG();
+        else if (sceneKey === 'tora') svgCode = ArtGenerator.createToraOnlySVG();
+
+        this.sourceImage = new Image();
+        this.sourceImage.onload = () => {
+          this.isImageLoaded = true;
+          this.ghostImage.src = this.sourceImage.src;
+          this.sampleReferenceImg.src = this.sourceImage.src;
+          this.ghostImage.style.opacity = this.opacityValues[this.guideOpacityLevel];
+          this.resetGame();
+        };
+        this.sourceImage.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgCode);
+      }
+
+      resetGame() {
+        if (!this.isImageLoaded) return;
+
+        this.moves = 0;
+        this.seconds = 0;
+        this.placedCount = 0;
+        this.totalPieces = this.gridSize * this.gridSize;
+        this.selectedPieceIndex = null;
+        this.updateMovesDisplay();
+        this.updatePiecesCounter();
+        this.stopTimer();
+        this.timerText.textContent = "00:00";
+        this.isGameActive = false;
+
+        // Clear Board
+        this.boardContainer.innerHTML = '';
+        this.boardContainer.appendChild(this.ghostImage);
+        this.boardContainer.style.gridTemplateColumns = `repeat(${this.gridSize}, minmax(0, 1fr))`;
+        this.boardContainer.style.gridTemplateRows = `repeat(${this.gridSize}, minmax(0, 1fr))`;
+
+        // Create Drop Target Cells
+        for (let row = 0; row < this.gridSize; row++) {
+          for (let col = 0; col < this.gridSize; col++) {
+            const index = row * this.gridSize + col;
+            const cell = document.createElement('div');
+            cell.className = 'board-cell relative border-2 border-amber-300/80 flex items-center justify-center transition-all bg-amber-50/30 overflow-hidden';
+            cell.dataset.index = index;
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+
+            // Clear number hint for child understanding
+            const hintBadge = document.createElement('span');
+            hintBadge.className = 'board-number-badge absolute top-1.5 left-1.5 bg-amber-900/60 text-white font-bold text-xs px-1.5 py-0.5 rounded-full pointer-events-none z-10 transition-opacity';
+            hintBadge.textContent = (index + 1);
+            if (!this.showNumbers) hintBadge.classList.add('opacity-0');
+            cell.appendChild(hintBadge);
+
+            // Native drag & drop events (for desktop)
+            cell.addEventListener('dragover', (e) => {
+              e.preventDefault();
+              cell.classList.add('tile-highlight-target');
+            });
+
+            cell.addEventListener('dragleave', () => {
+              if (this.selectedPieceIndex !== index) {
+                cell.classList.remove('tile-highlight-target');
+              }
+            });
+
+            cell.addEventListener('drop', (e) => {
+              e.preventDefault();
+              cell.classList.remove('tile-highlight-target');
+              const pieceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+              this.tryPlacePiece(pieceIndex, index, cell);
+            });
+
+            // Tap on cell to place selected piece
+            cell.addEventListener('click', () => {
+              if (this.selectedPieceIndex !== null) {
+                this.tryPlacePiece(this.selectedPieceIndex, index, cell);
+              }
+            });
+
+            this.boardContainer.appendChild(cell);
+          }
+        }
+
+        // Generate sliced piece elements
+        this.createPieces();
+      }
+
+      createPieces() {
+        this.trayContainer.innerHTML = '';
+        const pieceCards = [];
+
+        // Exact slice dimensions from source
+        const sliceW = this.sourceImage.naturalWidth / this.gridSize;
+        const sliceH = this.sourceImage.naturalHeight / this.gridSize;
+
+        for (let row = 0; row < this.gridSize; row++) {
+          for (let col = 0; col < this.gridSize; col++) {
+            const index = row * this.gridSize + col;
+            
+            // Draw piece on canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = sliceW;
+            canvas.height = sliceH;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(
+              this.sourceImage,
+              col * sliceW, row * sliceH, sliceW, sliceH,
+              0, 0, sliceW, sliceH
+            );
+
+            // Piece card container with shadow and clear border
+            const card = document.createElement('div');
+            card.className = 'puzzle-piece relative cursor-grab active:cursor-grabbing p-1 bg-white rounded-2xl border-3 border-amber-300 shadow-md hover:shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center';
+            card.dataset.index = index;
+            card.draggable = true;
+
+            // Responsive display size
+            const displaySize = Math.max(65, Math.min(110, Math.floor(250 / this.gridSize)));
+            canvas.style.width = `${displaySize}px`;
+            canvas.style.height = `${displaySize}px`;
+            canvas.className = 'rounded-xl pointer-events-none object-cover';
+            card.appendChild(canvas);
+
+            // Number tag on piece card for clarity
+            const numTag = document.createElement('span');
+            numTag.className = 'piece-number-tag absolute -top-2 -left-2 bg-amber-500 text-white font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow pointer-events-none transition-opacity';
+            numTag.textContent = (index + 1);
+            if (!this.showNumbers) numTag.classList.add('opacity-0');
+            card.appendChild(numTag);
+
+            // Native desktop drag events
+            card.addEventListener('dragstart', (e) => {
+              this.startTimerIfNeeded();
+              e.dataTransfer.setData('text/plain', index);
+              card.classList.add('opacity-40');
+              this.highlightTargetCell(index);
+              AudioEngine.playPop();
+            });
+
+            card.addEventListener('dragend', () => {
+              card.classList.remove('opacity-40');
+              this.clearHighlights();
+            });
+
+            // Tap/Click to Select with instant guide lighting
+            card.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.startTimerIfNeeded();
+
+              if (this.selectedPieceIndex === index) {
+                // Deselect
+                this.selectedPieceIndex = null;
+                card.classList.remove('ring-4', 'ring-emerald-500', 'bg-emerald-50');
+                this.clearHighlights();
+              } else {
+                // Select and visually spotlight target cell!
+                document.querySelectorAll('.puzzle-piece').forEach(p => {
+                  p.classList.remove('ring-4', 'ring-emerald-500', 'bg-emerald-50');
+                });
+                this.selectedPieceIndex = index;
+                card.classList.add('ring-4', 'ring-emerald-500', 'bg-emerald-50');
+                this.highlightTargetCell(index);
+                AudioEngine.playPop();
+                this.showToast(`Pieza #${index + 1} seleccionada. ¡Toca la casilla verde en el tablero!`, "👇");
+              }
+            });
+
+            pieceCards.push(card);
+          }
+        }
+
+        // Shuffle in tray
+        this.shuffleArray(pieceCards);
+        pieceCards.forEach(c => this.trayContainer.appendChild(c));
+        this.updatePiecesCounter();
+      }
+
+      setupPointerDrag() {
+        // Universal Touch and Pointer Handler for Mobile & Tablets
+        document.addEventListener('pointerdown', (e) => {
+          const card = e.target.closest('.puzzle-piece');
+          if (!card) return;
+
+          this.touchActive = true;
+          this.activeTouchIndex = parseInt(card.dataset.index, 10);
+          this.activeTouchCard = card;
+
+          // Prepare floating clone element
+          this.floatingDragContainer.innerHTML = '';
+          const cloneCanvas = card.querySelector('canvas').cloneNode(true);
+          cloneCanvas.style.width = '90px';
+          cloneCanvas.style.height = '90px';
+          cloneCanvas.className = 'rounded-2xl border-4 border-emerald-400 shadow-2xl';
+          this.floatingDragContainer.appendChild(cloneCanvas);
+          this.floatingDragContainer.classList.remove('hidden');
+
+          this.updateFloatingPosition(e.clientX, e.clientY);
+          this.highlightTargetCell(this.activeTouchIndex);
+        });
+
+        document.addEventListener('pointermove', (e) => {
+          if (!this.touchActive) return;
+          this.updateFloatingPosition(e.clientX, e.clientY);
+
+          // Check cell under pointer
+          this.floatingDragContainer.classList.add('pointer-events-none');
+          const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+          const cellBelow = elemBelow ? elemBelow.closest('.board-cell') : null;
+
+          document.querySelectorAll('.board-cell').forEach(c => {
+            if (c === cellBelow) {
+              c.classList.add('tile-highlight-target');
+            } else if (parseInt(c.dataset.index, 10) !== this.activeTouchIndex) {
+              c.classList.remove('tile-highlight-target');
+            }
+          });
+        });
+
+        document.addEventListener('pointerup', (e) => {
+          if (!this.touchActive) return;
+          this.touchActive = false;
+          this.floatingDragContainer.classList.add('hidden');
+          this.floatingDragContainer.innerHTML = '';
+
+          const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+          const cellBelow = elemBelow ? elemBelow.closest('.board-cell') : null;
+
+          if (cellBelow) {
+            const targetIndex = parseInt(cellBelow.dataset.index, 10);
+            this.tryPlacePiece(this.activeTouchIndex, targetIndex, cellBelow);
+          } else {
+            this.clearHighlights();
+          }
+
+          this.activeTouchIndex = null;
+          this.activeTouchCard = null;
+        });
+      }
+
+      updateFloatingPosition(x, y) {
+        this.floatingDragContainer.style.left = `${x}px`;
+        this.floatingDragContainer.style.top = `${y}px`;
+      }
+
+      highlightTargetCell(pieceIndex) {
+        this.clearHighlights();
+        const targetCell = this.boardContainer.querySelector(`.board-cell[data-index="${pieceIndex}"]`);
+        if (targetCell && !targetCell.querySelector('canvas')) {
+          targetCell.classList.add('tile-highlight-target');
+        }
+      }
+
+      clearHighlights() {
+        document.querySelectorAll('.board-cell').forEach(c => {
+          c.classList.remove('tile-highlight-target');
+        });
+      }
+
+      updateNumberBadgesVisibility() {
+        document.querySelectorAll('.board-number-badge, .piece-number-tag').forEach(tag => {
+          if (this.showNumbers) {
+            tag.classList.remove('opacity-0');
+          } else {
+            tag.classList.add('opacity-0');
+          }
+        });
+      }
+
+      shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      }
+
+      shuffleTray() {
+        const pieces = Array.from(this.trayContainer.children);
+        this.shuffleArray(pieces);
+        pieces.forEach(p => this.trayContainer.appendChild(p));
+        this.showToast("¡Piezas mezcladas en la bandeja!", "🔀");
+      }
+
+      tryPlacePiece(pieceIndex, targetIndex, cellElement) {
+        this.startTimerIfNeeded();
+
+        // Check if cell already filled
+        if (cellElement.querySelector('canvas')) {
+          this.showToast("¡Esa casilla ya está ocupada!", "⚠️");
+          AudioEngine.playWrong();
+          return;
+        }
+
+        this.moves++;
+        this.updateMovesDisplay();
+
+        if (pieceIndex === targetIndex) {
+          // RIGHT PIECE! SNAP IN PLACE
+          AudioEngine.playSnap();
+
+          const pieceCard = this.trayContainer.querySelector(`.puzzle-piece[data-index="${pieceIndex}"]`);
+          if (pieceCard) {
+            const canvas = pieceCard.querySelector('canvas');
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.classList.remove('rounded-xl');
+            canvas.classList.add('w-full', 'h-full', 'object-cover');
+
+            cellElement.innerHTML = '';
+            cellElement.appendChild(canvas);
+            cellElement.classList.add('bounce-pop');
+            cellElement.classList.remove('border-amber-300/80', 'bg-amber-50/30');
+            cellElement.classList.add('border-emerald-400');
+
+            // Success badge
+            const check = document.createElement('span');
+            check.className = 'absolute top-1 right-1 bg-emerald-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow';
+            check.textContent = '✓';
+            cellElement.appendChild(check);
+
+            pieceCard.remove();
+            this.selectedPieceIndex = null;
+            this.clearHighlights();
+            this.placedCount++;
+            this.updatePiecesCounter();
+
+            this.triggerSparkles(cellElement);
+
+            // Check if solved
+            if (this.placedCount >= this.totalPieces) {
+              this.handleVictory();
+            } else {
+              this.showToast(`¡Muy bien! Pieza encajada (${this.placedCount}/${this.totalPieces})`, "⭐");
+            }
+          }
+        } else {
+          // WRONG PLACEMENT - Gentle feedback
+          AudioEngine.playWrong();
+          cellElement.classList.add('bg-rose-200/70');
+          setTimeout(() => cellElement.classList.remove('bg-rose-200/70'), 400);
+          this.showToast(`¡Casi! La pieza #${pieceIndex + 1} no va en esa casilla. Mira la casilla verde que se ilumina`, "🧐");
+        }
+      }
+
+      triggerSparkles(element) {
+        const star = document.createElement('div');
+        star.className = 'absolute inset-0 flex items-center justify-center text-3xl pointer-events-none bounce-pop z-20';
+        star.textContent = '✨';
+        element.appendChild(star);
+        setTimeout(() => star.remove(), 700);
+      }
+
+      startTimerIfNeeded() {
+        if (!this.isGameActive) {
+          this.isGameActive = true;
+          this.seconds = 0;
+          this.timerInterval = setInterval(() => {
+            this.seconds++;
+            const mins = String(Math.floor(this.seconds / 60)).padStart(2, '0');
+            const secs = String(this.seconds % 60).padStart(2, '0');
+            this.timerText.textContent = `${mins}:${secs}`;
+          }, 1000);
+        }
+      }
+
+      stopTimer() {
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+        }
+      }
+
+      updateMovesDisplay() {
+        this.movesText.textContent = `${this.moves} movs`;
+      }
+
+      updatePiecesCounter() {
+        this.piecesRemaining.textContent = `${this.placedCount} de ${this.totalPieces} colocadas`;
+      }
+
+      handleVictory() {
+        this.stopTimer();
+        AudioEngine.playVictory();
+
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 100,
+            spread: 80,
+            origin: { y: 0.6 }
+          });
+          setTimeout(() => {
+            confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 } });
+            confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 } });
+          }, 250);
+        }
+
+        const mins = String(Math.floor(this.seconds / 60)).padStart(2, '0');
+        const secs = String(this.seconds % 60).padStart(2, '0');
+        this.modalTime.textContent = `${mins}:${secs}`;
+        this.modalMoves.textContent = this.moves;
+
+        setTimeout(() => {
+          this.victoryModal.classList.remove('hidden');
+          setTimeout(() => {
+            this.victoryModal.classList.remove('opacity-0');
+            this.victoryModal.querySelector('div').classList.remove('scale-90');
+            this.victoryModal.querySelector('div').classList.add('scale-100');
+          }, 20);
+        }, 500);
+      }
+
+      hideVictoryModal() {
+        this.victoryModal.classList.add('opacity-0');
+        this.victoryModal.querySelector('div').classList.remove('scale-100');
+        this.victoryModal.querySelector('div').classList.add('scale-90');
+        setTimeout(() => {
+          this.victoryModal.classList.add('hidden');
+        }, 300);
+      }
+
+      showToast(msg, icon = '💡') {
+        const toast = document.getElementById('toastNotification');
+        const text = document.getElementById('toastMessage');
+        const iconSpan = document.getElementById('toastIcon');
+        if (!toast) return;
+
+        text.textContent = msg;
+        iconSpan.textContent = icon;
+        toast.classList.remove('opacity-0', 'translate-y-3');
+        toast.classList.add('opacity-100', 'translate-y-0');
+
+        if (this.toastTimeout) clearTimeout(this.toastTimeout);
+        this.toastTimeout = setTimeout(() => {
+          toast.classList.remove('opacity-100', 'translate-y-0');
+          toast.classList.add('opacity-0', 'translate-y-3');
+        }, 2400);
+      }
+    }
+
+    // Initialize application on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      window.puzzleApp = new PuzzleGame();
+    });
+  </script>
+</body>
+</html>
