@@ -1,1 +1,1162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sopa de Letras Colorida</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body {
+      font-family: 'Fredoka', 'Outfit', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .letter-grid {
+      touch-action: none;
+    }
+    .pill-glow {
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12));
+    }
+    /* Pop animation on cell touch */
+    @keyframes cellPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+    .cell-active {
+      animation: cellPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    /* Custom scrollbar for word list */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    /* Hint highlight pulse */
+    @keyframes hintPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      50% { transform: scale(1.22); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+    }
+    .hint-highlight {
+      animation: hintPulse 0.9s infinite ease-in-out;
+      z-index: 25 !important;
+      color: #b45309 !important;
+      font-weight: 900 !important;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-rose-50 to-indigo-50 min-h-screen text-slate-800 flex flex-col items-center p-2 sm:p-4">
 
+  <div class="w-full max-w-4xl flex flex-col items-center">
+    
+    <!-- Header -->
+    <header class="w-full flex flex-wrap items-center justify-between gap-3 py-2 px-3 sm:px-6 bg-white/90 backdrop-blur-md rounded-3xl shadow-sm border border-slate-200/80 mb-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 flex items-center justify-center text-white text-xl sm:text-2xl shadow-md font-bold">
+          <i class="fa-solid fa-spell-check"></i>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black tracking-wide bg-gradient-to-r from-amber-600 via-rose-600 to-purple-600 bg-clip-text text-transparent">
+            SOPA DE LETRAS
+          </h1>
+          <p class="text-xs text-slate-500 font-medium hidden sm:block">Encuentra todas las palabras ocultas</p>
+        </div>
+      </div>
+
+      <!-- Action buttons & stats -->
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <!-- Timer pill -->
+        <div class="flex items-center gap-1.5 bg-slate-100/90 text-slate-700 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-inner border border-slate-200">
+          <i class="fa-regular fa-clock text-rose-500"></i>
+          <span id="timerText">00:00</span>
+        </div>
+
+        <!-- Hint button -->
+        <button id="hintBtn" class="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-sm transition-all transform active:scale-95 border border-amber-300">
+          <i class="fa-solid fa-lightbulb text-amber-500"></i>
+          <span>Pista</span>
+          <span id="hintCount" class="bg-amber-500 text-white rounded-full px-1.5 py-0.2 text-[10px] ml-0.5">3</span>
+        </button>
+
+        <!-- Sound toggle -->
+        <button id="soundBtn" class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95 border border-slate-200">
+          <i id="soundIcon" class="fa-solid fa-volume-high text-sm"></i>
+        </button>
+
+        <!-- Restart button -->
+        <button id="newGameBtn" class="w-9 h-9 flex items-center justify-center rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 transition active:scale-95" title="Nuevo Juego">
+          <i class="fa-solid fa-rotate-right text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Controls Bar: Category & Difficulty -->
+    <div class="w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-white/70 backdrop-blur rounded-2xl border border-slate-200/60 mb-3 text-xs sm:text-sm font-medium">
+      <div class="flex items-center gap-2 flex-wrap">
+        <label for="categorySelect" class="text-slate-500 font-bold flex items-center gap-1">
+          <i class="fa-solid fa-layer-group text-indigo-500"></i> Tema:
+        </label>
+        <select id="categorySelect" class="bg-slate-100 text-slate-800 font-bold rounded-xl px-2.5 py-1.5 border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer">
+          <option value="clasico">🎨 Clásico (Imagen)</option>
+          <option value="animales">🦁 Reino Animal</option>
+          <option value="frutas">🍎 Frutas y Verduras</option>
+          <option value="paises">🌍 Países del Mundo</option>
+          <option value="tecnologia">💻 Tecnología & Ciencia</option>
+          <option value="naturaleza">🌿 Naturaleza & Espacio</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label for="difficultySelect" class="text-slate-500 font-bold flex items-center gap-1">
+          <i class="fa-solid fa-gauge-high text-emerald-500"></i> Nivel:
+        </label>
+        <select id="difficultySelect" class="bg-slate-100 text-slate-800 font-bold rounded-xl px-2.5 py-1.5 border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer">
+          <option value="facil">Fácil (8×8)</option>
+          <option value="medio" selected>Normal (10×10)</option>
+          <option value="dificil">Difícil (12×12)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Game Container: Board and Words List -->
+    <main class="w-full grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+      
+      <!-- Word Search Board Container -->
+      <div class="lg:col-span-8 flex flex-col items-center bg-white p-3 sm:p-5 rounded-3xl shadow-xl border border-slate-100 relative">
+        
+        <!-- Board Wrapper with Relative Canvas & SVG Layers -->
+        <div id="boardContainer" class="relative select-none touch-none aspect-square w-full max-w-[480px] bg-amber-50/40 rounded-2xl overflow-hidden border-2 border-slate-200/90 shadow-inner flex items-center justify-center">
+          
+          <!-- SVG Overlay for vibrant rounded capsule pills -->
+          <svg id="svgOverlay" class="absolute inset-0 w-full h-full pointer-events-none z-10">
+            <!-- Permanent found word capsule lines injected here -->
+            <g id="foundLinesGroup"></g>
+            <!-- Current dragging line preview -->
+            <line id="previewLine" stroke-linecap="round" opacity="0.65" stroke-width="0" x1="0" y1="0" x2="0" y2="0" stroke="transparent"/>
+          </svg>
+
+          <!-- Interactive Grid for Letters -->
+          <div id="letterGrid" class="letter-grid absolute inset-0 grid w-full h-full z-20 cursor-crosshair">
+            <!-- Letters injected dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Floating Selection Word Display -->
+        <div class="mt-3 h-8 flex items-center justify-center">
+          <span id="currentSelectionText" class="px-4 py-1 rounded-full text-sm font-black tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-200 transition-all opacity-0 scale-95 transform">
+            ---
+          </span>
+        </div>
+      </div>
+
+      <!-- Side Panel: Words List and Progress -->
+      <aside class="lg:col-span-4 w-full bg-white p-4 rounded-3xl shadow-xl border border-slate-100 flex flex-col justify-between max-h-[580px]">
+        <div>
+          <!-- Title & counter -->
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-rose-500"></i>
+              Palabras a buscar
+            </h2>
+            <span id="progressBadge" class="bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-sm">
+              0 / 0
+            </span>
+          </div>
+
+          <!-- Words Chips Grid / List -->
+          <div id="wordsContainer" class="custom-scroll overflow-y-auto max-h-[360px] pr-1 flex flex-wrap lg:flex-col gap-2">
+            <!-- Word tags injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Quick Help / Instructions mini-banner -->
+        <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-indigo-400 text-sm"></i>
+          <span>Arrastra el dedo o ratón en cualquier dirección (horizontal, vertical o diagonal).</span>
+        </div>
+      </aside>
+
+    </main>
+
+    <!-- Footer Copyright -->
+    <footer class="mt-4 text-center text-xs text-slate-400 font-medium">
+      Inspirado en juegos clásicos de sopas de letras coloridas • ¡Diviértete agilizando tu mente!
+    </footer>
+
+  </div>
+
+  <!-- Victory Modal -->
+  <div id="victoryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl transform scale-90 transition-transform duration-300 border-4 border-amber-300 relative overflow-hidden">
+      
+      <!-- Top banner ribbon effect -->
+      <div class="w-20 h-20 bg-amber-400 rounded-full mx-auto flex items-center justify-center text-white text-4xl shadow-lg mb-4 animate-bounce">
+        <i class="fa-solid fa-trophy text-amber-100"></i>
+      </div>
+
+      <h3 class="text-2xl font-black text-slate-800 mb-1">¡FELICITACIONES!</h3>
+      <p class="text-sm text-slate-500 font-semibold mb-5">Has encontrado todas las palabras ocultas</p>
+
+      <!-- Stats Box -->
+      <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-6">
+        <div class="flex flex-col items-center">
+          <span class="text-xs text-slate-400 font-bold uppercase">Tiempo</span>
+          <span id="finalTime" class="text-xl font-black text-rose-500">00:00</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-xs text-slate-400 font-bold uppercase">Palabras</span>
+          <span id="finalWordsCount" class="text-xl font-black text-indigo-600">0/0</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col gap-2">
+        <button id="playAgainBtn" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/25 transition active:scale-95 text-base">
+          <i class="fa-solid fa-play mr-2"></i> Jugar otra vez
+        </button>
+        <button id="nextCategoryBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition active:scale-95 text-sm">
+          <i class="fa-solid fa-arrow-right mr-1"></i> Siguiente Categoría
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification message for hints / warnings -->
+  <div id="toastMessage" class="fixed bottom-6 z-50 bg-slate-800/90 text-white px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold shadow-lg backdrop-blur-md opacity-0 pointer-events-none transform translate-y-3 transition-all duration-200">
+    Mensaje
+  </div>
+
+  <!-- Canvas for celebration confetti -->
+  <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-40 w-full h-full"></canvas>
+
+  <script>
+    /**
+     * Web Audio API Synthesizer
+     * Generates rich melodious acoustic marimba and chime sounds without external MP3 files.
+     */
+    class SoundController {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playLetterSelect(pitchIndex = 0) {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const baseFreq = 340 + (pitchIndex * 24);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.12);
+      }
+
+      playWordFound() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        // Pleasant arpeggio chords (C Major 9: C5, E5, G5, B5, C6)
+        const notes = [523.25, 659.25, 783.99, 987.77, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.06);
+
+          gain.gain.setValueAtTime(0.14, this.ctx.currentTime + idx * 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.06 + 0.35);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(this.ctx.currentTime + idx * 0.06);
+          osc.stop(this.ctx.currentTime + idx * 0.06 + 0.35);
+        });
+      }
+
+      playVictory() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        const melody = [
+          { f: 523.25, t: 0.00, d: 0.15 },
+          { f: 659.25, t: 0.15, d: 0.15 },
+          { f: 783.99, t: 0.30, d: 0.15 },
+          { f: 1046.50, t: 0.45, d: 0.40 },
+          { f: 880.00, t: 0.90, d: 0.20 },
+          { f: 1046.50, t: 1.10, d: 0.60 }
+        ];
+
+        melody.forEach(item => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(item.f, this.ctx.currentTime + item.t);
+
+          gain.gain.setValueAtTime(0.18, this.ctx.currentTime + item.t);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + item.t + item.d);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(this.ctx.currentTime + item.t);
+          osc.stop(this.ctx.currentTime + item.t + item.d);
+        });
+      }
+
+      playHint() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, this.ctx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+    }
+
+    const soundCtrl = new SoundController();
+
+    // Capsule color themes matching the reference illustration (Vibrant, high contrast)
+    const PILL_COLORS = [
+      { fill: '#F59E0B', text: '#FFFFFF', name: 'Naranja' },       // Orange (SOPA)
+      { fill: '#F43F5E', text: '#FFFFFF', name: 'Coral' },         // Rose/Coral (CAFÉ)
+      { fill: '#6366F1', text: '#FFFFFF', name: 'Añil' },          // Indigo (AMOR)
+      { fill: '#10B981', text: '#FFFFFF', name: 'Esmeralda' },     // Green (LETRAS)
+      { fill: '#EC4899', text: '#FFFFFF', name: 'Rosa' },          // Bright Pink (diagonal)
+      { fill: '#06B6D4', text: '#FFFFFF', name: 'Cian' },          // Cyan (MAR)
+      { fill: '#FB923C', text: '#FFFFFF', name: 'Mandarina' },     // Amber/Red (GRATOS)
+      { fill: '#8B5CF6', text: '#FFFFFF', name: 'Violeta' },       // Purple
+      { fill: '#14B8A6', text: '#FFFFFF', name: 'Turquesa' },      // Teal
+      { fill: '#EAB308', text: '#FFFFFF', name: 'Amarillo' },      // Yellow
+      { fill: '#3B82F6', text: '#FFFFFF', name: 'Azul Real' },     // Blue
+      { fill: '#84CC16', text: '#FFFFFF', name: 'Lima' }           // Lime
+    ];
+
+    // Word Dictionaries in Spanish
+    const CATEGORIES = {
+      clasico: {
+        name: "Clásico (Imagen)",
+        words: ["SOPA", "LETRAS", "AMOR", "MAR", "CAFE", "GRATOS", "RITA", "FOE"]
+      },
+      animales: {
+        name: "Reino Animal",
+        words: ["LEON", "TIGRE", "JIRAFA", "DELFIN", "AGUILA", "PANDA", "LOBO", "CAMELLO", "PUMA", "CEBRA", "GORILA", "TORTUGA", "COLIBRI"]
+      },
+      frutas: {
+        name: "Frutas y Verduras",
+        words: ["MANZANA", "PLATANO", "FRESA", "CEREZA", "MANGO", "LIMON", "SANDIA", "NARANJA", "PERA", "MELON", "KIWI", "PAPAYA"]
+      },
+      paises: {
+        name: "Países del Mundo",
+        words: ["ESPANA", "MEXICO", "ARGENTINA", "JAPON", "FRANCIA", "BRASIL", "CHILE", "ITALIA", "PERU", "CANADA", "COLOMBIA", "ALEMANIA"]
+      },
+      tecnologia: {
+        name: "Tecnología & Ciencia",
+        words: ["ROBOT", "CODIGO", "INTERNET", "PLANETA", "GALAXIA", "QUANTUM", "DATOS", "CHIP", "REDES", "ATOMO", "PYTHON", "SISTEMA"]
+      },
+      naturaleza: {
+        name: "Naturaleza & Espacio",
+        words: ["BOSQUE", "OCEANO", "VOLCAN", "ESTRELLA", "COMETA", "CASCADA", "LUNA", "TIERRA", "SOLAR", "AURORA", "DESIERTO", "NEBULA"]
+      }
+    };
+
+    const DIFFICULTIES = {
+      facil: { size: 8, directions: [[0, 1], [1, 0]], maxWords: 6 },
+      medio: { size: 10, directions: [[0, 1], [1, 0], [1, 1], [-1, 1]], maxWords: 8 },
+      dificil: { size: 12, directions: [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]], maxWords: 10 }
+    };
+
+    // State Variables
+    let currentCategoryKey = 'clasico';
+    let currentDifficultyKey = 'medio';
+    let boardSize = 10;
+    let grid = [];
+    let placedWords = []; // { word, color, cells: [{r,c}] }
+    let remainingWords = [];
+    let hintsAvailable = 3;
+    let timerSeconds = 0;
+    let timerInterval = null;
+    let isGameOver = false;
+
+    // Pointer Interaction State
+    let isSelecting = false;
+    let selectionStart = null; // { r, c }
+    let selectionCurrent = null; // { r, c }
+    let selectedPath = []; // [{ r, c }]
+
+    /**
+     * Generate an optimized and valid word search grid
+     */
+    function generateBoard() {
+      const config = DIFFICULTIES[currentDifficultyKey];
+      boardSize = config.size;
+      const allowedDirections = config.directions;
+      
+      // Initialize empty grid
+      grid = Array.from({ length: boardSize }, () => Array(boardSize).fill(''));
+
+      // Filter category words suitable for board size
+      const categoryData = CATEGORIES[currentCategoryKey];
+      let pool = [...categoryData.words]
+        .map(w => w.toUpperCase().trim())
+        .filter(w => w.length <= boardSize);
+
+      // Shuffle pool
+      pool.sort(() => Math.random() - 0.5);
+
+      placedWords = [];
+      const targetCount = Math.min(config.maxWords, pool.length);
+
+      for (let wIndex = 0; wIndex < pool.length; wIndex++) {
+        if (placedWords.length >= targetCount) break;
+        const word = pool[wIndex];
+
+        // Try placing the word in random allowed directions
+        const placed = tryPlaceWord(word, allowedDirections);
+        if (placed) {
+          const colorObj = PILL_COLORS[placedWords.length % PILL_COLORS.length];
+          placedWords.push({
+            word: word,
+            color: colorObj,
+            cells: placed.cells,
+            found: false
+          });
+        }
+      }
+
+      // If for any rare reason less than 4 words placed, retry with fallback
+      if (placedWords.length < 3 && pool.length >= 3) {
+        return generateBoard();
+      }
+
+      // Fill remaining empty spots with random letters
+      // Using Spanish-weighted letter distribution for authentic appearance
+      const letterPool = "AAAAEEEEIIIOOOUUUBCCDDFFGGHHLLMMNNPQRRSSTTVVXYZ";
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if (!grid[r][c]) {
+            const randChar = letterPool.charAt(Math.floor(Math.random() * letterPool.length));
+            grid[r][c] = randChar;
+          }
+        }
+      }
+
+      remainingWords = [...placedWords];
+      renderBoardUI();
+      renderWordsListUI();
+      startTimer();
+    }
+
+    /**
+     * Try to fit a word into the grid with randomized attempts
+     */
+    function tryPlaceWord(word, directions) {
+      const shuffledDirections = [...directions].sort(() => Math.random() - 0.5);
+      const positions = [];
+
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          positions.push({ r, c });
+        }
+      }
+      positions.sort(() => Math.random() - 0.5);
+
+      for (const pos of positions) {
+        for (const [dr, dc] of shuffledDirections) {
+          const cells = [];
+          let fits = true;
+
+          for (let i = 0; i < word.length; i++) {
+            const nr = pos.r + dr * i;
+            const nc = pos.c + dc * i;
+
+            if (nr < 0 || nr >= boardSize || nc < 0 || nc >= boardSize) {
+              fits = false;
+              break;
+            }
+
+            const currentCell = grid[nr][nc];
+            if (currentCell !== '' && currentCell !== word[i]) {
+              fits = false;
+              break;
+            }
+
+            cells.push({ r: nr, c: nc, letter: word[i] });
+          }
+
+          if (fits) {
+            // Commit word to board
+            for (const item of cells) {
+              grid[item.r][item.c] = item.letter;
+            }
+            return { cells };
+          }
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Compute exact SVG coordinate centers of grid cells
+     */
+    function getCellCenterCoordinates(r, c) {
+      const board = document.getElementById('boardContainer');
+      const rect = board.getBoundingClientRect();
+      const cellWidth = rect.width / boardSize;
+      const cellHeight = rect.height / boardSize;
+
+      return {
+        x: (c + 0.5) * cellWidth,
+        y: (r + 0.5) * cellHeight,
+        radius: Math.min(cellWidth, cellHeight) * 0.44
+      };
+    }
+
+    /**
+     * Redraw all permanent highlights and active preview pill
+     */
+    function redrawSVGLines() {
+      const foundGroup = document.getElementById('foundLinesGroup');
+      foundGroup.innerHTML = '';
+
+      const board = document.getElementById('boardContainer');
+      const rect = board.getBoundingClientRect();
+      const cellWidth = rect.width / boardSize;
+      const strokeWidth = cellWidth * 0.82; // Pill thickness
+
+      // Render found words
+      placedWords.filter(pw => pw.found).forEach(pw => {
+        const start = pw.cells[0];
+        const end = pw.cells[pw.cells.length - 1];
+        const p1 = getCellCenterCoordinates(start.r, start.c);
+        const p2 = getCellCenterCoordinates(end.r, end.c);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', p1.x);
+        line.setAttribute('y1', p1.y);
+        line.setAttribute('x2', p2.x);
+        line.setAttribute('y2', p2.y);
+        line.setAttribute('stroke', pw.color.fill);
+        line.setAttribute('stroke-width', strokeWidth);
+        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('opacity', '0.78');
+        line.setAttribute('class', 'pill-glow transition-all');
+        foundGroup.appendChild(line);
+      });
+
+      // Render preview line if dragging
+      const previewLine = document.getElementById('previewLine');
+      if (isSelecting && selectedPath.length > 1) {
+        const start = selectedPath[0];
+        const end = selectedPath[selectedPath.length - 1];
+        const p1 = getCellCenterCoordinates(start.r, start.c);
+        const p2 = getCellCenterCoordinates(end.r, end.c);
+
+        previewLine.setAttribute('x1', p1.x);
+        previewLine.setAttribute('y1', p1.y);
+        previewLine.setAttribute('x2', p2.x);
+        previewLine.setAttribute('y2', p2.y);
+        previewLine.setAttribute('stroke', '#6366F1'); // Vibrant indigo for selection
+        previewLine.setAttribute('stroke-width', strokeWidth);
+        previewLine.setAttribute('opacity', '0.45');
+      } else {
+        previewLine.setAttribute('opacity', '0');
+        previewLine.setAttribute('stroke-width', '0');
+      }
+    }
+
+    /**
+     * Map client coordinates (touch or mouse) to grid cell indices
+     */
+    function getCellIndicesFromCoords(clientX, clientY) {
+      const board = document.getElementById('boardContainer');
+      const rect = board.getBoundingClientRect();
+
+      if (
+        clientX < rect.left || clientX > rect.right ||
+        clientY < rect.top || clientY > rect.bottom
+      ) {
+        return null;
+      }
+
+      const c = Math.floor(((clientX - rect.left) / rect.width) * boardSize);
+      const r = Math.floor(((clientY - rect.top) / rect.height) * boardSize);
+
+      if (r >= 0 && r < boardSize && c >= 0 && c < boardSize) {
+        return { r, c };
+      }
+      return null;
+    }
+
+    /**
+     * Calculate snapped straight line path (Horizontal, Vertical, or 45-degree Diagonal)
+     */
+    function calculateSnappedPath(start, current) {
+      if (!start || !current) return [];
+      if (start.r === current.r && start.c === current.c) return [start];
+
+      const dr = current.r - start.r;
+      const dc = current.c - start.c;
+      const absDr = Math.abs(dr);
+      const absDc = Math.abs(dc);
+
+      let stepR = 0;
+      let stepC = 0;
+      let steps = 0;
+
+      // Determine predominant angle
+      if (absDr === 0) {
+        // Pure horizontal
+        stepC = Math.sign(dc);
+        steps = absDc;
+      } else if (absDc === 0) {
+        // Pure vertical
+        stepR = Math.sign(dr);
+        steps = absDr;
+      } else {
+        // Check for diagonal threshold
+        const ratio = absDr / absDc;
+        if (ratio >= 0.5 && ratio <= 2.0) {
+          // Snap to 45 degree diagonal
+          stepR = Math.sign(dr);
+          stepC = Math.sign(dc);
+          steps = Math.max(absDr, absDc);
+        } else if (absDr > absDc) {
+          // Snap to vertical
+          stepR = Math.sign(dr);
+          steps = absDr;
+        } else {
+          // Snap to horizontal
+          stepC = Math.sign(dc);
+          steps = absDc;
+        }
+      }
+
+      const path = [];
+      for (let i = 0; i <= steps; i++) {
+        const nr = start.r + stepR * i;
+        const nc = start.c + stepC * i;
+        if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize) {
+          path.push({ r: nr, c: nc });
+        }
+      }
+      return path;
+    }
+
+    /**
+     * Start selection on pointer down
+     */
+    function handlePointerStart(clientX, clientY) {
+      if (isGameOver) return;
+      const cell = getCellIndicesFromCoords(clientX, clientY);
+      if (!cell) return;
+
+      soundCtrl.initContext();
+      isSelecting = true;
+      selectionStart = cell;
+      selectionCurrent = cell;
+      selectedPath = [cell];
+
+      soundCtrl.playLetterSelect(0);
+      updateSelectionUI();
+    }
+
+    /**
+     * Update selection path on pointer drag
+     */
+    function handlePointerMove(clientX, clientY) {
+      if (!isSelecting || isGameOver) return;
+      const cell = getCellIndicesFromCoords(clientX, clientY);
+      if (!cell) return;
+
+      if (!selectionCurrent || selectionCurrent.r !== cell.r || selectionCurrent.c !== cell.c) {
+        selectionCurrent = cell;
+        const previousLen = selectedPath.length;
+        selectedPath = calculateSnappedPath(selectionStart, selectionCurrent);
+
+        if (selectedPath.length !== previousLen) {
+          soundCtrl.playLetterSelect(selectedPath.length % 8);
+        }
+
+        updateSelectionUI();
+      }
+    }
+
+    /**
+     * Finish selection on pointer up and check word match
+     */
+    function handlePointerEnd() {
+      if (!isSelecting || isGameOver) return;
+      isSelecting = false;
+
+      checkSelection();
+
+      selectionStart = null;
+      selectionCurrent = null;
+      selectedPath = [];
+      updateSelectionUI();
+    }
+
+    /**
+     * Compare selected string to remaining words
+     */
+    function checkSelection() {
+      if (selectedPath.length < 2) return;
+
+      // Extract letters in forward and backward order
+      const forwardLetters = selectedPath.map(pos => grid[pos.r][pos.c]).join('');
+      const reverseLetters = forwardLetters.split('').reverse().join('');
+
+      let matchedWord = null;
+      for (const item of placedWords) {
+        if (!item.found && (item.word === forwardLetters || item.word === reverseLetters)) {
+          // Verify that coordinates match
+          const itemCellsKey = item.cells.map(c => `${c.r},${c.c}`).join('|');
+          const forwardKey = selectedPath.map(c => `${c.r},${c.c}`).join('|');
+          const reverseKey = [...selectedPath].reverse().map(c => `${c.r},${c.c}`).join('|');
+
+          if (itemCellsKey === forwardKey || itemCellsKey === reverseKey) {
+            matchedWord = item;
+            break;
+          }
+        }
+      }
+
+      if (matchedWord) {
+        matchedWord.found = true;
+        soundCtrl.playWordFound();
+        showToast(`¡Encontraste "${matchedWord.word}"! 🌟`);
+        updateProgress();
+        renderWordsListUI();
+        redrawSVGLines();
+
+        // Check victory
+        const allFound = placedWords.every(pw => pw.found);
+        if (allFound) {
+          triggerVictory();
+        }
+      }
+    }
+
+    /**
+     * Update selection label text and SVG line
+     */
+    function updateSelectionUI() {
+      const label = document.getElementById('currentSelectionText');
+      if (isSelecting && selectedPath.length > 0) {
+        const text = selectedPath.map(pos => grid[pos.r][pos.c]).join('');
+        label.textContent = text;
+        label.classList.remove('opacity-0', 'scale-95');
+        label.classList.add('opacity-100', 'scale-100');
+      } else {
+        label.classList.add('opacity-0', 'scale-95');
+        label.classList.remove('opacity-100', 'scale-100');
+      }
+
+      redrawSVGLines();
+    }
+
+    /**
+     * Render the grid HTML elements
+     */
+    function renderBoardUI() {
+      const gridContainer = document.getElementById('letterGrid');
+      gridContainer.innerHTML = '';
+      gridContainer.style.gridTemplateColumns = `repeat(${boardSize}, minmax(0, 1fr))`;
+      gridContainer.style.gridTemplateRows = `repeat(${boardSize}, minmax(0, 1fr))`;
+
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'letter-cell flex items-center justify-center font-black text-slate-800 transition-colors select-none';
+          
+          // Responsive font sizes based on grid dimension
+          if (boardSize <= 8) {
+            cell.classList.add('text-xl', 'sm:text-3xl');
+          } else if (boardSize <= 10) {
+            cell.classList.add('text-lg', 'sm:text-2xl');
+          } else {
+            cell.classList.add('text-base', 'sm:text-xl');
+          }
+
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          cell.textContent = grid[r][c];
+          gridContainer.appendChild(cell);
+        }
+      }
+
+      // Redraw SVG after DOM layout update
+      requestAnimationFrame(() => redrawSVGLines());
+    }
+
+    /**
+     * Render word list chips
+     */
+    function renderWordsListUI() {
+      const container = document.getElementById('wordsContainer');
+      container.innerHTML = '';
+
+      placedWords.forEach((item, index) => {
+        const badge = document.createElement('div');
+        const isFound = item.found;
+
+        badge.className = `flex items-center justify-between px-3 py-2 rounded-2xl text-xs sm:text-sm font-extrabold transition-all duration-300 border ${
+          isFound 
+            ? 'opacity-60 line-through text-slate-400 bg-slate-100 border-slate-200' 
+            : 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200/90 shadow-sm'
+        }`;
+
+        // Left pill indicator color
+        const dot = `<span class="w-3 h-3 rounded-full mr-2 shadow-xs shrink-0" style="background-color: ${item.color.fill}; opacity: ${isFound ? '0.4' : '1'}"></span>`;
+        
+        // Right check icon or word length
+        const status = isFound 
+          ? `<i class="fa-solid fa-check text-emerald-500 font-bold ml-2"></i>` 
+          : `<span class="text-[10px] text-slate-400 font-bold ml-2">${item.word.length}l</span>`;
+
+        badge.innerHTML = `
+          <div class="flex items-center">
+            ${dot}
+            <span class="tracking-wide">${item.word}</span>
+          </div>
+          ${status}
+        `;
+
+        container.appendChild(badge);
+      });
+
+      updateProgress();
+    }
+
+    /**
+     * Update numerical progress indicators
+     */
+    function updateProgress() {
+      const foundCount = placedWords.filter(pw => pw.found).length;
+      const total = placedWords.length;
+      document.getElementById('progressBadge').textContent = `${foundCount} / ${total}`;
+    }
+
+    /**
+     * Trigger dynamic hint feature
+     */
+    function triggerHint() {
+      if (isGameOver) return;
+      if (hintsAvailable <= 0) {
+        showToast('No te quedan pistas disponibles en esta partida');
+        return;
+      }
+
+      // Find first unrevealed word
+      const unrevealed = placedWords.filter(pw => !pw.found);
+      if (unrevealed.length === 0) return;
+
+      const randomWord = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      const firstCell = randomWord.cells[0];
+
+      hintsAvailable--;
+      document.getElementById('hintCount').textContent = hintsAvailable;
+      soundCtrl.playHint();
+
+      // Highlight the first cell briefly
+      const cellElement = document.querySelector(`.letter-cell[data-r="${firstCell.r}"][data-c="${firstCell.c}"]`);
+      if (cellElement) {
+        cellElement.classList.add('hint-highlight');
+        showToast(`Pista: "${randomWord.word.charAt(0)}" para "${randomWord.word}"`);
+
+        setTimeout(() => {
+          cellElement.classList.remove('hint-highlight');
+        }, 3200);
+      }
+    }
+
+    /**
+     * Timer controller
+     */
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerSeconds = 0;
+      updateTimerText();
+      timerInterval = setInterval(() => {
+        timerSeconds++;
+        updateTimerText();
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function updateTimerText() {
+      const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const s = (timerSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('timerText').textContent = `${m}:${s}`;
+    }
+
+    /**
+     * Show customizable floating notification
+     */
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toastMessage');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2500);
+    }
+
+    /**
+     * Celebration victory modal & fanfare
+     */
+    function triggerVictory() {
+      isGameOver = true;
+      stopTimer();
+      soundCtrl.playVictory();
+      startConfetti();
+
+      const modal = document.getElementById('victoryModal');
+      const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const s = (timerSeconds % 60).toString().padStart(2, '0');
+
+      document.getElementById('finalTime').textContent = `${m}:${s}`;
+      document.getElementById('finalWordsCount').textContent = `${placedWords.length}/${placedWords.length}`;
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100');
+      modal.querySelector('div').classList.remove('scale-90');
+      modal.querySelector('div').classList.add('scale-100');
+    }
+
+    function hideVictoryModal() {
+      const modal = document.getElementById('victoryModal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.classList.remove('opacity-100');
+      modal.querySelector('div').classList.add('scale-90');
+      modal.querySelector('div').classList.remove('scale-100');
+      stopConfetti();
+    }
+
+    /**
+     * Smooth Canvas Confetti Engine
+     */
+    let confettiAnimationId = null;
+    let confettiParticles = [];
+
+    function startConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6'];
+      confettiParticles = [];
+
+      for (let i = 0; i < 90; i++) {
+        confettiParticles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vx: Math.random() * 4 - 2,
+          vy: Math.random() * 4 + 3,
+          rot: Math.random() * 360,
+          vRot: Math.random() * 8 - 4
+        });
+      }
+
+      function renderParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        confettiParticles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vRot;
+
+          if (p.y > canvas.height) {
+            p.y = -20;
+            p.x = Math.random() * canvas.width;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rot * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.4);
+          ctx.restore();
+        });
+
+        confettiAnimationId = requestAnimationFrame(renderParticles);
+      }
+
+      renderParticles();
+    }
+
+    function stopConfetti() {
+      if (confettiAnimationId) {
+        cancelAnimationFrame(confettiAnimationId);
+        confettiAnimationId = null;
+      }
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    /**
+     * Initialize event listeners and start first round
+     */
+    function initEvents() {
+      const boardContainer = document.getElementById('boardContainer');
+
+      // Pointer events for universal Touch + Mouse support
+      boardContainer.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        boardContainer.setPointerCapture(e.pointerId);
+        handlePointerStart(e.clientX, e.clientY);
+      });
+
+      boardContainer.addEventListener('pointermove', (e) => {
+        if (!isSelecting) return;
+        e.preventDefault();
+        handlePointerMove(e.clientX, e.clientY);
+      });
+
+      boardContainer.addEventListener('pointerup', (e) => {
+        try { boardContainer.releasePointerCapture(e.pointerId); } catch(_) {}
+        handlePointerEnd();
+      });
+
+      boardContainer.addEventListener('pointercancel', () => {
+        handlePointerEnd();
+      });
+
+      // Window resize listener to recalculate SVG line coordinates properly
+      window.addEventListener('resize', () => {
+        redrawSVGLines();
+        const canvas = document.getElementById('confettiCanvas');
+        if (canvas) {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+      });
+
+      // Controls events
+      document.getElementById('categorySelect').addEventListener('change', (e) => {
+        currentCategoryKey = e.target.value;
+        startNewGame();
+      });
+
+      document.getElementById('difficultySelect').addEventListener('change', (e) => {
+        currentDifficultyKey = e.target.value;
+        startNewGame();
+      });
+
+      document.getElementById('hintBtn').addEventListener('click', triggerHint);
+
+      document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+
+      document.getElementById('playAgainBtn').addEventListener('click', () => {
+        hideVictoryModal();
+        startNewGame();
+      });
+
+      document.getElementById('nextCategoryBtn').addEventListener('click', () => {
+        hideVictoryModal();
+        const keys = Object.keys(CATEGORIES);
+        const nextIdx = (keys.indexOf(currentCategoryKey) + 1) % keys.length;
+        currentCategoryKey = keys[nextIdx];
+        document.getElementById('categorySelect').value = currentCategoryKey;
+        startNewGame();
+      });
+
+      // Sound toggle
+      const soundBtn = document.getElementById('soundBtn');
+      const soundIcon = document.getElementById('soundIcon');
+      soundBtn.addEventListener('click', () => {
+        soundCtrl.enabled = !soundCtrl.enabled;
+        if (soundCtrl.enabled) {
+          soundIcon.className = 'fa-solid fa-volume-high text-sm';
+          soundBtn.classList.remove('text-slate-400');
+          soundBtn.classList.add('text-slate-700');
+          showToast('Sonido activado 🔊');
+        } else {
+          soundIcon.className = 'fa-solid fa-volume-xmark text-sm';
+          soundBtn.classList.remove('text-slate-700');
+          soundBtn.classList.add('text-slate-400');
+          showToast('Sonido silenciado 🔇');
+        }
+      });
+    }
+
+    /**
+     * Start a fresh game round
+     */
+    function startNewGame() {
+      isGameOver = false;
+      hintsAvailable = 3;
+      document.getElementById('hintCount').textContent = hintsAvailable;
+      hideVictoryModal();
+      generateBoard();
+    }
+
+    // Launch game on page load
+    window.addEventListener('load', () => {
+      initEvents();
+      startNewGame();
+    });
+  </script>
+</body>
+</html>
