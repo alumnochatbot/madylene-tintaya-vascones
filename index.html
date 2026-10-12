@@ -21,6 +21,7 @@
       --accent-purple: #9333ea;
       --accent-orchid: #d946ef;
       --accent-magenta: #ff2a85;
+      --accent-memoria: #10b981;
       --accent-miku: #06b6d4;
       --accent-miku-glow: #22d3ee;
       --accent-barbie: #ff2a85;
@@ -34,6 +35,7 @@
       --border-subtle: rgba(168, 85, 247, 0.28);
       --border-glow: rgba(192, 132, 252, 0.55);
       --border-miku-glow: rgba(6, 182, 212, 0.65);
+      --border-memoria-glow: rgba(16, 185, 129, 0.65);
       --border-barbie-glow: rgba(255, 42, 133, 0.65);
       --border-raton-glow: rgba(245, 158, 11, 0.65);
       --font-main: 'Plus Jakarta Sans', sans-serif;
@@ -258,6 +260,18 @@
     .btn-raton-glow:hover {
       transform: translateY(-2px) scale(1.03);
       box-shadow: 0 6px 32px rgba(245, 158, 11, 0.85);
+    }
+
+    .btn-memoria-glow {
+      background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 22px rgba(16, 185, 129, 0.55);
+      border: 1px solid rgba(167, 243, 208, 0.5);
+    }
+
+    .btn-memoria-glow:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 32px rgba(16, 185, 129, 0.85);
     }
 
     .btn-outline {
@@ -637,6 +651,11 @@
     .project-card.card-barbie {
       border: 1.8px solid var(--accent-barbie);
       box-shadow: 0 10px 30px rgba(255, 42, 133, 0.3);
+    }
+
+    .project-card.card-memoria {
+      border: 1.8px solid var(--accent-memoria);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
     }
 
     .project-card:hover {
@@ -1316,6 +1335,9 @@
             <a href="https://share.gemini.google/EMwsHzpfFzrT" target="_blank" rel="noopener noreferrer" class="btn btn-barbie-glow" style="font-size: 0.94rem; padding: 0.8rem 1.5rem;">
               👑 Jugar Barbie Dream Runway AI 🎀
             </a>
+            <a href="juegodememoria/index.html" target="_blank" rel="noopener noreferrer" class="btn btn-memoria-glow" style="font-size: 0.94rem; padding: 0.8rem 1.5rem;">
+              🍉 Jugar Juego de Memoria 🧠
+            </a>
           </div>
         </div>
 
@@ -1499,14 +1521,15 @@
 
             <div class="faq-item active">
               <div class="faq-question">
-                <span>¿Cómo jugar en vivo a los 3 videojuegos destacados?</span>
+                <span>¿Cómo jugar en vivo a los 4 videojuegos destacados?</span>
                 <span class="faq-toggle-icon">&#9662;</span>
               </div>
               <div class="faq-answer">
-                ¡Los 3 juegos están completamente desplegados y listos para jugar en tu navegador! Puedes hacer clic en los botones de acceso directo en el Hero o ingresar por sus enlaces:<br><br>
+                ¡Los 4 juegos están completamente desplegados y listos para jugar en tu navegador! Puedes hacer clic en los botones de acceso directo en el Hero o ingresar por sus enlaces:<br><br>
                 🧀 <strong>Ratón & Queso: Maze Heist:</strong> <a href="https://share.gemini.google/um8eQ8frNsih" target="_blank" rel="noopener noreferrer" style="color: var(--accent-raton); font-weight: 700;">https://share.gemini.google/um8eQ8frNsih</a><br>
                 🎤 <strong>Hatsune Miku Neon Rhythm AI:</strong> <a href="https://share.gemini.google/MqLPc3esy2QG" target="_blank" rel="noopener noreferrer" style="color: var(--accent-miku); font-weight: 700;">https://share.gemini.google/MqLPc3esy2QG</a><br>
-                🎀 <strong>Barbie Dream Runway AI:</strong> <a href="https://share.gemini.google/EMwsHzpfFzrT" target="_blank" rel="noopener noreferrer" style="color: var(--accent-barbie); font-weight: 700;">https://share.gemini.google/EMwsHzpfFzrT</a>
+                🎀 <strong>Barbie Dream Runway AI:</strong> <a href="https://share.gemini.google/EMwsHzpfFzrT" target="_blank" rel="noopener noreferrer" style="color: var(--accent-barbie); font-weight: 700;">https://share.gemini.google/EMwsHzpfFzrT</a><br>
+                🍉 <strong>Juego de Memoria:</strong> <a href="juegodememoria/index.html" target="_blank" rel="noopener noreferrer" style="color: var(--accent-memoria); font-weight: 700;">juegodememoria/index.html</a>
               </div>
             </div>
 
@@ -1662,6 +1685,7 @@
         <button class="chip-btn" data-query="¿Cómo jugar Ratón y Queso?">Jugar Ratón & Queso 🧀</button>
         <button class="chip-btn" data-query="¿Cómo jugar Hatsune Miku?">Jugar Hatsune Miku 🎤</button>
         <button class="chip-btn" data-query="¿Cómo jugar Barbie Dream?">Jugar Barbie Dream 🎀</button>
+        <button class="chip-btn" data-query="¿Cómo jugar Memoria?">Jugar Memoria 🍉</button>
         <button class="chip-btn" data-query="¿Quién es Madylene Tintaya?">Sobre Madylene 🌸</button>
         <button class="chip-btn" data-query="¿Cómo contactar por WhatsApp?">Escribir por WhatsApp 💬</button>
       </div>
@@ -1705,13 +1729,31 @@
   <script>
     const CONFIG = {
       phone: "59170000000",
-      storageKey: "madylene_gamer_portfolio_v7", // Clave v7 con los 3 juegos oficiales en vivo
+      storageKey: "madylene_gamer_portfolio_v8", // Clave v8 con los 4 juegos oficiales en vivo
       ratonGameUrl: "https://share.gemini.google/um8eQ8frNsih",
       mikuGameUrl: "https://share.gemini.google/MqLPc3esy2QG",
-      barbieGameUrl: "https://share.gemini.google/EMwsHzpfFzrT"
+      barbieGameUrl: "https://share.gemini.google/EMwsHzpfFzrT",
+      memoriaGameUrl: "juegodememoria/index.html"
     };
 
     const DEFAULT_PROJECTS = [
+      {
+        id: "proj-memoria",
+        title: "Juego de Memoria",
+        category: "juegos",
+        categoryLabel: "Videojuegos & Físicas",
+        desc: "¡Un divertido juego de memoria de frutas y verduras! Pon a prueba tu retentiva visual con distintos niveles de dificultad, cronómetro y efectos de sonido.",
+        icon: "🍉",
+        tags: ["Memoria", "Casual", "Juego Oficial", "Educativo", "Brain Training"],
+        isLiveGame: true,
+        liveUrl: CONFIG.memoriaGameUrl,
+        themeClass: "card-memoria",
+        liveBtnClass: "btn-memoria-glow",
+        liveBtnText: "🍉 Jugar en Vivo",
+        badgeType: "standard",
+        interactiveType: "memoria",
+        demoPrompt: "🧠 [Memory Engine]: Juego cargado. Temporizador en 00:00. Listo para voltear la primera carta."
+      },
       {
         id: "proj-raton",
         title: "Ratón & Queso: Maze Heist",
@@ -2063,6 +2105,18 @@
             </a>
           </div>
         `;
+      } else if (proj.id === "proj-memoria") {
+        interactiveWidgetHtml = `
+          <div style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid var(--accent-memoria); border-radius: var(--radius-sm); padding: 1.4rem; margin-bottom: 1.5rem; text-align: center; box-shadow: 0 0 22px rgba(16, 185, 129, 0.28);">
+            <div style="font-size: 1rem; color: #d1fae5; font-weight: 800; margin-bottom: 0.4rem; letter-spacing: 0.5px;">🍉 ¡JUEGO OFICIAL DE MEMORIA EN VIVO! 🧠</div>
+            <p style="color: #a7f3d0; font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5;">
+              Entrena tu cerebro emparejando frutas y verduras. Distintos niveles de dificultad y retos de tiempo.
+            </p>
+            <a href="${proj.liveUrl || CONFIG.memoriaGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-memoria-glow" style="width: 100%; font-size: 1rem; padding: 0.85rem 1.4rem;">
+              🍉 Jugar Juego de Memoria Oficial 🧠
+            </a>
+          </div>
+        `;
       }
 
       content.innerHTML = `
@@ -2307,10 +2361,12 @@
             reply = `¡El juego oficial de <strong>Hatsune Miku Neon Rhythm AI</strong> 🎤 está en vivo! Puedes jugarlo ahora mismo aquí:<br><br><a href="${CONFIG.mikuGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-miku-glow btn-sm" style="display:inline-flex; margin-top:4px;">🎮 Jugar Hatsune Miku en Vivo 🎤</a>`;
           } else if (q.includes("barbie") || q.includes("dream") || q.includes("moda") || q.includes("pasarela")) {
             reply = `¡El juego oficial de <strong>Barbie Dream Fashion & Runway AI</strong> 🎀 está en vivo! Desfila y crea estilos aquí:<br><br><a href="${CONFIG.barbieGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-barbie-glow btn-sm" style="display:inline-flex; margin-top:4px;">👑 Jugar Barbie Dream Oficial 🎀</a>`;
+          } else if (q.includes("memoria") || q.includes("cartas") || q.includes("frutas")) {
+            reply = `¡El <strong>Juego de Memoria</strong> 🍉 oficial está en vivo! Entrena tu cerebro aquí:<br><br><a href="${CONFIG.memoriaGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-memoria-glow btn-sm" style="display:inline-flex; margin-top:4px;">🍉 Jugar Juego de Memoria Oficial 🧠</a>`;
           } else if (q.includes("quién es") || q.includes("madylene") || q.includes("sobre")) {
             reply = "Madylene Tintaya es una talentosa gamer y desarrolladora de la <strong>Unidad Educativa Cambridge</strong> en Santa Cruz de la Sierra. Le apasiona crear videojuegos, diseñar interfaces estéticas e integrar Inteligencia Artificial. ✨🌸";
           } else if (q.includes("juego") || q.includes("proyecto") || q.includes("cuántos") || q.includes("todos")) {
-            reply = `¡Madylene cuenta con <strong>${projectsData.length} proyectos y videojuegos</strong>! Los tres más destacados y jugables en vivo son <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku</strong> 🎤 y <strong>Barbie Dream</strong> 🎀. ¡Todos disponibles en la sección de juegos! 🎮`;
+            reply = `¡Madylene cuenta con <strong>${projectsData.length} proyectos y videojuegos</strong>! Los más destacados y jugables en vivo son <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku</strong> 🎤, <strong>Barbie Dream</strong> 🎀 y <strong>Memoria</strong> 🍉. ¡Todos disponibles en la sección de juegos! 🎮`;
           } else if (q.includes("whatsapp") || q.includes("contacto") || q.includes("escribir")) {
             reply = "Puedes chatear directamente con ella haciendo clic en el botón flotante de WhatsApp en la esquina inferior derecha o usando el formulario de contacto. ¡Le encantará coordinar una partida de código! 💬💖";
           } else if (q.includes("cambridge") || q.includes("colegio") || q.includes("santa cruz")) {
