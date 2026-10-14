@@ -1,1 +1,1026 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Google Snake - Edición Especial</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tone.js for synthesized playful sound effects -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Fredoka', 'Inter', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .board-container {
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 0 0 0 6px #406925;
+    }
+    .pulse-glow {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.04); filter: brightness(1.15); }
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4a752c;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-[#2d4d1d] min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 text-white select-none overflow-x-hidden">
+
+  <!-- Main Game Wrapper -->
+  <div class="w-full max-w-2xl flex flex-col items-center">
+    
+    <!-- Top Bar Styled after Google Snake Header -->
+    <header class="w-full bg-[#4a752c] rounded-t-2xl px-4 py-2.5 flex items-center justify-between shadow-lg border-b-4 border-[#3c6123] text-lg sm:text-xl font-bold">
+      <!-- Apple counter -->
+      <div class="flex items-center space-x-2 bg-[#3c6123]/60 px-3 py-1 rounded-xl shadow-inner">
+        <span class="text-2xl filter drop-shadow">🍎</span>
+        <span id="scoreDisplay" class="font-extrabold tracking-wider text-white">0</span>
+      </div>
+
+      <!-- High score trophy -->
+      <div class="flex items-center space-x-2 bg-[#3c6123]/60 px-3 py-1 rounded-xl shadow-inner">
+        <span class="text-xl">🏆</span>
+        <span id="highScoreDisplay" class="font-extrabold tracking-wider text-yellow-300">0</span>
+      </div>
+
+      <!-- Timer with milliseconds (like screenshot: 00:05:555) -->
+      <div class="flex items-center space-x-1.5 bg-[#3c6123]/60 px-3 py-1 rounded-xl font-mono text-base sm:text-lg text-emerald-200">
+        <span id="timerDisplay">00:00:000</span>
+      </div>
+
+      <!-- Settings & Audio Controls -->
+      <div class="flex items-center space-x-2">
+        <button id="audioToggleBtn" title="Activar/Silenciar Sonido" class="p-2 rounded-xl bg-[#3c6123] hover:bg-[#588d35] active:scale-95 transition-all text-white">
+          <svg id="soundOnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+          </svg>
+          <svg id="soundOffIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+          </svg>
+        </button>
+
+        <button id="openConfigBtn" title="Opciones y Modos" class="p-2 rounded-xl bg-[#3c6123] hover:bg-[#588d35] active:scale-95 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Board Area with Canvas -->
+    <div class="relative w-full aspect-[17/15] bg-[#578a34] board-container rounded-b-2xl overflow-hidden flex items-center justify-center">
+      <canvas id="gameCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+      <!-- Overlay: Start / Pause / Game Over Modal -->
+      <div id="overlayScreen" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300">
+        <div id="overlayContent" class="bg-[#4a752c] border-4 border-[#5c9137] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl flex flex-col items-center">
+          
+          <div id="overlayIcon" class="text-6xl mb-2 animate-bounce">🐍</div>
+          <h2 id="overlayTitle" class="text-2xl sm:text-3xl font-extrabold text-white tracking-wide mb-1">¡SNAKE AZUL!</h2>
+          <p id="overlaySubtitle" class="text-sm text-green-100 mb-4">Inspirado en Google Snake</p>
+
+          <div id="statsSummary" class="w-full bg-[#3a5d22] rounded-2xl p-3 mb-4 space-y-1.5 text-sm hidden">
+            <div class="flex justify-between px-2 text-white/90">
+              <span>Manzanas comidas:</span>
+              <span id="finalApples" class="font-bold text-yellow-300">0</span>
+            </div>
+            <div class="flex justify-between px-2 text-white/90">
+              <span>Tiempo sobrevivido:</span>
+              <span id="finalTime" class="font-bold text-emerald-300">00:00:000</span>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button id="primaryActionBtn" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 active:scale-95 transition-all text-white font-extrabold text-lg shadow-lg flex items-center justify-center space-x-2">
+            <span id="primaryActionText">¡JUGAR AHORA!</span>
+          </button>
+
+          <!-- Mode Quick Toggle Button -->
+          <div class="mt-3 flex items-center justify-center space-x-2 w-full text-xs font-semibold">
+            <span class="text-green-200">Modo:</span>
+            <button id="quickModeToggleBtn" class="bg-[#3a5d22] hover:bg-[#34531e] px-3 py-1 rounded-xl text-yellow-300 border border-[#5c9137] transition-all">
+              🍎 Frenesí (Muchas Manzanas)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile On-Screen D-Pad Controls -->
+    <div class="w-full mt-4 flex flex-col items-center md:hidden">
+      <div class="grid grid-cols-3 gap-2 w-52 h-44">
+        <div></div>
+        <button id="btnUp" class="dpad-btn bg-[#4a752c] active:bg-blue-600 border-2 border-[#5c9137] rounded-2xl shadow-md flex items-center justify-center text-3xl active:scale-95 transition-transform">
+          ⬆️
+        </button>
+        <div></div>
+
+        <button id="btnLeft" class="dpad-btn bg-[#4a752c] active:bg-blue-600 border-2 border-[#5c9137] rounded-2xl shadow-md flex items-center justify-center text-3xl active:scale-95 transition-transform">
+          ⬅️
+        </button>
+        <button id="btnDown" class="dpad-btn bg-[#4a752c] active:bg-blue-600 border-2 border-[#5c9137] rounded-2xl shadow-md flex items-center justify-center text-3xl active:scale-95 transition-transform">
+          ⬇️
+        </button>
+        <button id="btnRight" class="dpad-btn bg-[#4a752c] active:bg-blue-600 border-2 border-[#5c9137] rounded-2xl shadow-md flex items-center justify-center text-3xl active:scale-95 transition-transform">
+          ➡️
+        </button>
+      </div>
+      <p class="text-xs text-green-200/80 mt-2 font-medium">También puedes deslizar el dedo (Swipe) sobre el césped</p>
+    </div>
+
+    <!-- Desktop Keyboard hints -->
+    <div class="hidden md:flex items-center justify-center space-x-6 mt-4 text-xs font-semibold text-green-200/90">
+      <div class="flex items-center space-x-1">
+        <span class="px-2 py-1 bg-[#3a5d22] border border-[#5c9137] rounded-lg text-white">W / ⬆</span>
+        <span class="px-2 py-1 bg-[#3a5d22] border border-[#5c9137] rounded-lg text-white">A / ⬅</span>
+        <span class="px-2 py-1 bg-[#3a5d22] border border-[#5c9137] rounded-lg text-white">S / ⬇</span>
+        <span class="px-2 py-1 bg-[#3a5d22] border border-[#5c9137] rounded-lg text-white">D / ➡️</span>
+        <span class="ml-2">para moverte</span>
+      </div>
+      <div class="flex items-center space-x-1">
+        <span class="px-2.5 py-1 bg-[#3a5d22] border border-[#5c9137] rounded-lg text-white">Espacio / P</span>
+        <span>Pausar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Custom Overlay, no alert/confirm) -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#3e6325] border-4 border-[#5c9137] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#5c9137] pb-3">
+        <h3 class="text-xl font-bold flex items-center space-x-2">
+          <span>⚙️ Opciones de Juego</span>
+        </h3>
+        <button id="closeConfigBtn" class="text-white hover:text-red-300 font-extrabold text-2xl leading-none">&times;</button>
+      </div>
+
+      <!-- Mode selection -->
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-green-100">Modo de Manzanas:</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="modeFrenzyBtn" class="mode-select-btn p-2.5 rounded-xl border-2 border-yellow-400 bg-yellow-500/20 text-yellow-200 text-sm font-bold flex flex-col items-center text-center">
+            <span class="text-lg">🍎 Frenesí</span>
+            <span class="text-[11px] font-normal text-white/80">35 manzanas simultáneas (¡Como en la foto!)</span>
+          </button>
+          <button id="modeClassicBtn" class="mode-select-btn p-2.5 rounded-xl border-2 border-transparent bg-[#2f4b1c] text-white/80 text-sm font-bold flex flex-col items-center text-center">
+            <span class="text-lg">🍏 Clásico</span>
+            <span class="text-[11px] font-normal text-white/80">1 manzana a la vez tradicional</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Snake Skins -->
+      <div>
+        <label class="block text-sm font-semibold mb-2 text-green-100">Color de la Serpiente:</label>
+        <div class="grid grid-cols-4 gap-2 text-xs">
+          <button data-skin="blue" class="skin-btn p-2 rounded-xl border-2 border-white bg-blue-600 font-bold flex flex-col items-center shadow">
+            <div class="w-5 h-5 rounded-full bg-blue-300 mb-1 border border-white"></div>
+            <span>Azul Foto</span>
+          </button>
+          <button data-skin="green" class="skin-btn p-2 rounded-xl border-2 border-transparent bg-emerald-600 font-bold flex flex-col items-center">
+            <div class="w-5 h-5 rounded-full bg-emerald-300 mb-1"></div>
+            <span>Verde</span>
+          </button>
+          <button data-skin="purple" class="skin-btn p-2 rounded-xl border-2 border-transparent bg-purple-600 font-bold flex flex-col items-center">
+            <div class="w-5 h-5 rounded-full bg-purple-300 mb-1"></div>
+            <span>Púrpura</span>
+          </button>
+          <button data-skin="red" class="skin-btn p-2 rounded-xl border-2 border-transparent bg-rose-600 font-bold flex flex-col items-center">
+            <div class="w-5 h-5 rounded-full bg-rose-300 mb-1"></div>
+            <span>Fuego</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Snake Speed -->
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-green-100">Velocidad del Juego:</label>
+        <div class="grid grid-cols-3 gap-2 text-xs font-bold">
+          <button data-speed="slow" class="speed-btn p-2 rounded-xl bg-[#2f4b1c] border border-transparent">Tranquilo</button>
+          <button data-speed="normal" class="speed-btn p-2 rounded-xl bg-blue-600 border border-white">Normal</button>
+          <button data-speed="fast" class="speed-btn p-2 rounded-xl bg-[#2f4b1c] border border-transparent">Relámpago</button>
+        </div>
+      </div>
+
+      <button id="applyConfigBtn" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 font-bold rounded-xl text-white shadow-lg">
+        Guardar y Continuar
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- Audio System with Tone.js / Fallback Web Audio ---
+    let soundEnabled = true;
+    let synth = null;
+    let audioStarted = false;
+
+    function initAudio() {
+      if (audioStarted) return;
+      try {
+        if (typeof Tone !== 'undefined') {
+          Tone.start();
+          synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.01, release: 0.1 }
+          }).toDestination();
+          synth.volume.value = -8;
+          audioStarted = true;
+        }
+      } catch (e) {
+        console.warn("Audio Context init deferred:", e);
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled || !synth) return;
+      try {
+        const now = Tone.now();
+        if (type === 'eat') {
+          synth.triggerAttackRelease("C6", "32n", now);
+          synth.triggerAttackRelease("G6", "32n", now + 0.05);
+        } else if (type === 'move') {
+          synth.triggerAttackRelease("C3", "64n", now);
+        } else if (type === 'die') {
+          synth.triggerAttackRelease("E3", "16n", now);
+          synth.triggerAttackRelease("C3", "16n", now + 0.08);
+          synth.triggerAttackRelease("G2", "8n", now + 0.16);
+        } else if (type === 'highscore') {
+          synth.triggerAttackRelease("G5", "16n", now);
+          synth.triggerAttackRelease("B5", "16n", now + 0.08);
+          synth.triggerAttackRelease("D6", "16n", now + 0.16);
+          synth.triggerAttackRelease("G6", "8n", now + 0.24);
+        }
+      } catch (e) {
+        // Safe fail
+      }
+    }
+
+    // --- Grid & Game Constants ---
+    const COLS = 17; // Classic Google Snake width
+    const ROWS = 15; // Classic Google Snake height
+
+    // Skin Color Themes
+    const SKINS = {
+      blue: {
+        body: '#3f7bf2',
+        bodyDark: '#295fd3',
+        belly: '#71a3ff',
+        head: '#3570e6',
+        eyes: '#ffffff',
+        pupil: '#16336e',
+        name: 'Azul Google (Foto)'
+      },
+      green: {
+        body: '#42a5f5',
+        body: '#4caf50',
+        bodyDark: '#2e7d32',
+        belly: '#a5d6a7',
+        head: '#43a047',
+        eyes: '#ffffff',
+        pupil: '#1b5e20',
+        name: 'Verde Original'
+      },
+      purple: {
+        body: '#9c27b0',
+        bodyDark: '#6a1b9a',
+        belly: '#ce93d8',
+        head: '#8e24aa',
+        eyes: '#ffffff',
+        pupil: '#4a148c',
+        name: 'Púrpura Neón'
+      },
+      red: {
+        body: '#e53935',
+        bodyDark: '#b71c1c',
+        belly: '#ff8a80',
+        head: '#d32f2f',
+        eyes: '#ffffff',
+        pupil: '#5f0909',
+        name: 'Rojo Rubí'
+      }
+    };
+
+    // Game Variables
+    let currentSkin = 'blue';
+    let gameMode = 'frenzy'; // 'frenzy' (lots of apples) or 'classic' (1 apple)
+    let speedSetting = 'normal';
+    
+    // Interval delays (ms)
+    const SPEED_DELAYS = {
+      slow: 110,
+      normal: 85,
+      fast: 65
+    };
+
+    let snake = [];
+    let direction = { x: 1, y: 0 };
+    let nextDirection = { x: 1, y: 0 };
+    let apples = [];
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('snake_highscore') || '0', 10);
+    
+    let isGameRunning = false;
+    let isPaused = false;
+    let gameOver = false;
+    let gameLoopTimeout = null;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+
+    // Floating text particle effects
+    let particles = [];
+
+    // Canvas elements
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI Elements
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const highScoreDisplay = document.getElementById('highScoreDisplay');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const overlayScreen = document.getElementById('overlayScreen');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlaySubtitle = document.getElementById('overlaySubtitle');
+    const overlayIcon = document.getElementById('overlayIcon');
+    const primaryActionBtn = document.getElementById('primaryActionBtn');
+    const primaryActionText = document.getElementById('primaryActionText');
+    const statsSummary = document.getElementById('statsSummary');
+    const finalApples = document.getElementById('finalApples');
+    const finalTime = document.getElementById('finalTime');
+    const quickModeToggleBtn = document.getElementById('quickModeToggleBtn');
+    const audioToggleBtn = document.getElementById('audioToggleBtn');
+    const soundOnIcon = document.getElementById('soundOnIcon');
+    const soundOffIcon = document.getElementById('soundOffIcon');
+    const openConfigBtn = document.getElementById('openConfigBtn');
+    const closeConfigBtn = document.getElementById('closeConfigBtn');
+    const applyConfigBtn = document.getElementById('applyConfigBtn');
+    const settingsModal = document.getElementById('settingsModal');
+
+    let cellSize = 30;
+
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cellSize = rect.width / COLS;
+      
+      render();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Format timer to 00:05:555
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSec / 60);
+      const seconds = totalSec % 60;
+      const milliseconds = ms % 1000;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(3, '0')}`;
+    }
+
+    function updateTimer() {
+      if (!isGameRunning || isPaused) return;
+      const now = performance.now();
+      elapsedTime = Math.floor(now - startTime);
+      timerDisplay.textContent = formatTime(elapsedTime);
+    }
+
+    // Initialize Snake state
+    function initSnake() {
+      snake = [
+        { x: 5, y: 7 },
+        { x: 4, y: 7 },
+        { x: 3, y: 7 }
+      ];
+      direction = { x: 1, y: 0 };
+      nextDirection = { x: 1, y: 0 };
+      score = 0;
+      scoreDisplay.textContent = score;
+      highScoreDisplay.textContent = highScore;
+      particles = [];
+      spawnAllApples();
+    }
+
+    // Determine how many apples should be on board based on mode
+    function getMaxApples() {
+      return gameMode === 'frenzy' ? 36 : 1;
+    }
+
+    function isOccupied(x, y) {
+      if (snake.some(segment => segment.x === x && segment.y === y)) return true;
+      if (apples.some(apple => apple.x === x && apple.y === y)) return true;
+      return false;
+    }
+
+    function spawnApple() {
+      let attempts = 0;
+      while (attempts < 200) {
+        const x = Math.floor(Math.random() * COLS);
+        const y = Math.floor(Math.random() * ROWS);
+        if (!isOccupied(x, y)) {
+          // Give apple subtle animation offset
+          apples.push({
+            x,
+            y,
+            bounce: Math.random() * Math.PI * 2,
+            scale: 0.2 // spawn scale animation
+          });
+          return true;
+        }
+        attempts++;
+      }
+      return false;
+    }
+
+    function spawnAllApples() {
+      apples = [];
+      const target = getMaxApples();
+      for (let i = 0; i < target; i++) {
+        spawnApple();
+      }
+    }
+
+    function startGame() {
+      initAudio();
+      overlayScreen.classList.add('opacity-0', 'pointer-events-none');
+      initSnake();
+      isGameRunning = true;
+      isPaused = false;
+      gameOver = false;
+      startTime = performance.now();
+      
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 33); // approx 30fps timer updates
+      
+      if (gameLoopTimeout) clearTimeout(gameLoopTimeout);
+      runGameStep();
+    }
+
+    function togglePause() {
+      if (!isGameRunning || gameOver) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        overlayIcon.textContent = '⏸️';
+        overlayTitle.textContent = 'JUEGO EN PAUSA';
+        overlaySubtitle.textContent = 'Presiona continuar para reanudar';
+        primaryActionText.textContent = 'CONTINUAR';
+        statsSummary.classList.add('hidden');
+        overlayScreen.classList.remove('opacity-0', 'pointer-events-none');
+      } else {
+        overlayScreen.classList.add('opacity-0', 'pointer-events-none');
+        startTime = performance.now() - elapsedTime;
+        runGameStep();
+      }
+    }
+
+    function handleGameOver() {
+      gameOver = true;
+      isGameRunning = false;
+      clearInterval(timerInterval);
+      if (gameLoopTimeout) clearTimeout(gameLoopTimeout);
+      playSound('die');
+
+      // Check high score
+      let isNewRecord = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('snake_highscore', highScore.toString());
+        highScoreDisplay.textContent = highScore;
+        isNewRecord = true;
+        setTimeout(() => playSound('highscore'), 250);
+      }
+
+      // Populate Game Over Overlay
+      overlayIcon.textContent = isNewRecord ? '👑' : '💥';
+      overlayTitle.textContent = isNewRecord ? '¡NUEVO RÉCORD!' : '¡FIN DEL JUEGO!';
+      overlaySubtitle.textContent = isNewRecord ? `Superaste tu marca anterior con ${score} manzanas` : '¡Chocaste! Buen intento';
+      finalApples.textContent = score;
+      finalTime.textContent = formatTime(elapsedTime);
+      statsSummary.classList.remove('hidden');
+      primaryActionText.textContent = 'JUGAR DE NUEVO';
+      overlayScreen.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function runGameStep() {
+      if (!isGameRunning || isPaused || gameOver) return;
+
+      // Update current movement direction
+      direction = { ...nextDirection };
+      const head = snake[0];
+      const newHead = { x: head.x + direction.x, y: head.y + direction.y };
+
+      // Wall collision check
+      if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+        handleGameOver();
+        return;
+      }
+
+      // Self collision check (ignore tail tip as it moves forward unless eating)
+      for (let i = 0; i < snake.length - 1; i++) {
+        if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+          handleGameOver();
+          return;
+        }
+      }
+
+      // Check Apple Consumption
+      const appleIndex = apples.findIndex(a => a.x === newHead.x && a.y === newHead.y);
+      let ateFood = false;
+
+      if (appleIndex !== -1) {
+        ateFood = true;
+        apples.splice(appleIndex, 1);
+        score++;
+        scoreDisplay.textContent = score;
+        playSound('eat');
+
+        // Spawn float particle
+        particles.push({
+          x: newHead.x * cellSize + cellSize / 2,
+          y: newHead.y * cellSize + cellSize / 2,
+          text: '+1',
+          alpha: 1.0,
+          vy: -1.5
+        });
+
+        // Replenish apples to target density
+        const targetCount = getMaxApples();
+        while (apples.length < targetCount) {
+          spawnApple();
+        }
+      }
+
+      // Move snake
+      snake.unshift(newHead);
+      if (!ateFood) {
+        snake.pop();
+      }
+
+      render();
+
+      const delay = SPEED_DELAYS[speedSetting] || 85;
+      gameLoopTimeout = setTimeout(runGameStep, delay);
+    }
+
+    function drawGrassBackground() {
+      // Classic Google Snake checkerboard colors
+      const color1 = '#aad751';
+      const color2 = '#a2d149';
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          ctx.fillStyle = (r + c) % 2 === 0 ? color1 : color2;
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize + 0.5, cellSize + 0.5);
+        }
+      }
+    }
+
+    function drawApples() {
+      apples.forEach(apple => {
+        // Grow animation
+        if (apple.scale < 1) apple.scale = Math.min(1, apple.scale + 0.15);
+
+        const cx = apple.x * cellSize + cellSize / 2;
+        const cy = apple.y * cellSize + cellSize / 2;
+        const r = (cellSize * 0.42) * apple.scale;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        // Apple drop shadow
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.9, r * 0.8, r * 0.35, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(40, 70, 20, 0.3)';
+        ctx.fill();
+
+        // Red Apple body gradient
+        const appleGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+        appleGrad.addColorStop(0, '#ff6b6b');
+        appleGrad.addColorStop(0.7, '#e52d27');
+        appleGrad.addColorStop(1, '#b31217');
+
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = appleGrad;
+        ctx.fill();
+
+        // Apple Stem (brown)
+        ctx.beginPath();
+        ctx.strokeStyle = '#6d4c41';
+        ctx.lineWidth = Math.max(2, cellSize * 0.08);
+        ctx.lineCap = 'round';
+        ctx.moveTo(0, -r * 0.8);
+        ctx.quadraticCurveTo(r * 0.3, -r * 1.3, r * 0.2, -r * 1.45);
+        ctx.stroke();
+
+        // Little green Leaf
+        ctx.beginPath();
+        ctx.fillStyle = '#4caf50';
+        ctx.ellipse(r * 0.4, -r * 1.15, r * 0.35, r * 0.18, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shiny Highlight
+        ctx.beginPath();
+        ctx.arc(-r * 0.35, -r * 0.35, r * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fill();
+
+        ctx.restore();
+      });
+    }
+
+    function drawSnake() {
+      if (snake.length === 0) return;
+      const theme = SKINS[currentSkin] || SKINS.blue;
+
+      // Draw Body Segments (smooth connected line with rounded ends)
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = theme.body;
+      ctx.lineWidth = cellSize * 0.88;
+
+      if (snake.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(snake[0].x * cellSize + cellSize / 2, snake[0].y * cellSize + cellSize / 2);
+        for (let i = 1; i < snake.length; i++) {
+          ctx.lineTo(snake[i].x * cellSize + cellSize / 2, snake[i].y * cellSize + cellSize / 2);
+        }
+        ctx.stroke();
+
+        // Inner belly highlight line
+        ctx.strokeStyle = theme.belly;
+        ctx.lineWidth = cellSize * 0.2;
+        ctx.stroke();
+      }
+
+      // Draw round Tail tip
+      const tail = snake[snake.length - 1];
+      ctx.beginPath();
+      ctx.arc(tail.x * cellSize + cellSize / 2, tail.y * cellSize + cellSize / 2, cellSize * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = theme.bodyDark;
+      ctx.fill();
+
+      // DRAW THE EXPRESSIVE CARTOON SNAKE HEAD (Inspired faithfully by the user's screenshot!)
+      const head = snake[0];
+      const hx = head.x * cellSize + cellSize / 2;
+      const hy = head.y * cellSize + cellSize / 2;
+      const headRadius = cellSize * 0.52;
+
+      ctx.save();
+      ctx.translate(hx, hy);
+
+      // Rotate head according to moving direction
+      let angle = 0;
+      if (direction.x === 1) angle = 0;
+      else if (direction.x === -1) angle = Math.PI;
+      else if (direction.y === 1) angle = Math.PI / 2;
+      else if (direction.y === -1) angle = -Math.PI / 2;
+      ctx.rotate(angle);
+
+      // Head shape (Rounded dome with lovely ears/cheeks)
+      ctx.beginPath();
+      ctx.arc(0, 0, headRadius, 0, Math.PI * 2);
+      ctx.fillStyle = theme.head;
+      ctx.fill();
+
+      // Is there an apple right ahead? (Open mouth anticipation!)
+      let isNearApple = apples.some(a => {
+        const dx = Math.abs(a.x - head.x);
+        const dy = Math.abs(a.y - head.y);
+        return dx <= 2 && dy <= 2;
+      });
+
+      // Cute Open Mouth (like screenshot!)
+      if (isNearApple) {
+        ctx.beginPath();
+        ctx.arc(headRadius * 0.25, 0, headRadius * 0.52, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.fillStyle = '#173678';
+        ctx.fill();
+
+        // Little cute white fangs/teeth
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(headRadius * 0.35, -headRadius * 0.35);
+        ctx.lineTo(headRadius * 0.55, -headRadius * 0.25);
+        ctx.lineTo(headRadius * 0.35, -headRadius * 0.15);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(headRadius * 0.35, headRadius * 0.35);
+        ctx.lineTo(headRadius * 0.55, headRadius * 0.25);
+        ctx.lineTo(headRadius * 0.35, headRadius * 0.15);
+        ctx.fill();
+      } else {
+        // Cheerful flicking red tongue every few frames
+        if (Math.floor(Date.now() / 200) % 2 === 0) {
+          ctx.beginPath();
+          ctx.strokeStyle = '#ff3366';
+          ctx.lineWidth = Math.max(2, cellSize * 0.08);
+          ctx.lineCap = 'round';
+          ctx.moveTo(headRadius * 0.8, 0);
+          ctx.lineTo(headRadius * 1.35, 0);
+          ctx.lineTo(headRadius * 1.5, -headRadius * 0.2);
+          ctx.moveTo(headRadius * 1.35, 0);
+          ctx.lineTo(headRadius * 1.5, headRadius * 0.2);
+          ctx.stroke();
+        }
+      }
+
+      // HUGE CARTOON WHITE EYES (Distinctive feature in the user screenshot)
+      const eyeOffsetX = headRadius * 0.1;
+      const eyeOffsetY = headRadius * 0.45;
+      const eyeRadius = headRadius * 0.42;
+      const pupilRadius = eyeRadius * 0.52;
+
+      // Draw Both Eyes
+      [-1, 1].forEach(side => {
+        const ey = side * eyeOffsetY;
+
+        // White of eye
+        ctx.beginPath();
+        ctx.arc(eyeOffsetX, ey, eyeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.stroke();
+
+        // Dark expressive pupil (looking forward/curiously)
+        ctx.beginPath();
+        ctx.arc(eyeOffsetX + pupilRadius * 0.4, ey, pupilRadius, 0, Math.PI * 2);
+        ctx.fillStyle = theme.pupil;
+        ctx.fill();
+
+        // Eye glint / shine reflection (gives that lively anime/cartoon look!)
+        ctx.beginPath();
+        ctx.arc(eyeOffsetX + pupilRadius * 0.55, ey - pupilRadius * 0.3, pupilRadius * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      });
+
+      ctx.restore();
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.y += p.vy;
+        p.alpha -= 0.04;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.font = `bold ${Math.floor(cellSize * 0.65)}px 'Fredoka', sans-serif`;
+        ctx.fillStyle = `rgba(255, 235, 59, ${p.alpha})`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(p.text, p.x, p.y);
+        ctx.restore();
+      }
+    }
+
+    // Main Canvas Render pipeline
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrassBackground();
+      drawApples();
+      drawSnake();
+      drawParticles();
+    }
+
+    function setDirection(dx, dy) {
+      // Disallow 180° instant turns
+      if (direction.x + dx === 0 && direction.y + dy === 0) return;
+      if (nextDirection.x + dx === 0 && nextDirection.y + dy === 0) return;
+      
+      nextDirection = { x: dx, y: dy };
+      playSound('move');
+    }
+
+    // Keyboard controls
+    window.addEventListener('keydown', (e) => {
+      // Auto-start on arrow keys if in start screen
+      if (!isGameRunning && (e.key.startsWith('Arrow') || ['w','a','s','d','W','A','S','D',' '].includes(e.key))) {
+        startGame();
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          setDirection(0, -1);
+          e.preventDefault();
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          setDirection(0, 1);
+          e.preventDefault();
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          setDirection(-1, 0);
+          e.preventDefault();
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          setDirection(1, 0);
+          e.preventDefault();
+          break;
+        case ' ':
+        case 'p':
+        case 'P':
+          togglePause();
+          e.preventDefault();
+          break;
+      }
+    });
+
+    // Mobile D-Pad Buttons
+    document.getElementById('btnUp').addEventListener('click', () => setDirection(0, -1));
+    document.getElementById('btnDown').addEventListener('click', () => setDirection(0, 1));
+    document.getElementById('btnLeft').addEventListener('click', () => setDirection(-1, 0));
+    document.getElementById('btnRight').addEventListener('click', () => setDirection(1, 0));
+
+    // Touch Swipe Gestures on Canvas
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 25;
+
+    canvas.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (!isGameRunning && !gameOver) {
+        startGame();
+        return;
+      }
+
+      const touch = e.changedTouches[0];
+      const diffX = touch.clientX - touchStartX;
+      const diffY = touch.clientY - touchStartY;
+
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+          if (diffX > 0) setDirection(1, 0);
+          else setDirection(-1, 0);
+        }
+      } else {
+        if (Math.abs(diffY) > SWIPE_THRESHOLD) {
+          if (diffY > 0) setDirection(0, 1);
+          else setDirection(0, -1);
+        }
+      }
+    }, { passive: true });
+
+    // Primary action button (Play / Resume / Retry)
+    primaryActionBtn.addEventListener('click', () => {
+      if (isPaused) {
+        togglePause();
+      } else {
+        startGame();
+      }
+    });
+
+    // Quick mode toggle in start overlay
+    function updateModeButtonUI() {
+      if (gameMode === 'frenzy') {
+        quickModeToggleBtn.textContent = '🍎 Frenesí (35 Manzanas - Foto)';
+      } else {
+        quickModeToggleBtn.textContent = '🍏 Clásico (1 Manzana)';
+      }
+    }
+
+    quickModeToggleBtn.addEventListener('click', () => {
+      gameMode = gameMode === 'frenzy' ? 'classic' : 'frenzy';
+      updateModeButtonUI();
+      if (isGameRunning) {
+        spawnAllApples();
+      }
+    });
+
+    // Sound Toggle
+    audioToggleBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      if (soundEnabled) {
+        soundOnIcon.classList.remove('hidden');
+        soundOffIcon.classList.add('hidden');
+        initAudio();
+      } else {
+        soundOnIcon.classList.add('hidden');
+        soundOffIcon.classList.remove('hidden');
+      }
+    });
+
+    // Settings Modal
+    openConfigBtn.addEventListener('click', () => {
+      if (isGameRunning && !isPaused) togglePause();
+      settingsModal.classList.remove('hidden');
+    });
+
+    closeConfigBtn.addEventListener('click', () => {
+      settingsModal.classList.add('hidden');
+    });
+
+    applyConfigBtn.addEventListener('click', () => {
+      settingsModal.classList.add('hidden');
+      updateModeButtonUI();
+      if (isGameRunning) {
+        spawnAllApples();
+      }
+      render();
+    });
+
+    // Modal Mode selector buttons
+    const modeFrenzyBtn = document.getElementById('modeFrenzyBtn');
+    const modeClassicBtn = document.getElementById('modeClassicBtn');
+
+    function syncModalModeButtons() {
+      if (gameMode === 'frenzy') {
+        modeFrenzyBtn.classList.add('border-yellow-400', 'bg-yellow-500/20', 'text-yellow-200');
+        modeClassicBtn.classList.remove('border-yellow-400', 'bg-yellow-500/20', 'text-yellow-200');
+      } else {
+        modeClassicBtn.classList.add('border-yellow-400', 'bg-yellow-500/20', 'text-yellow-200');
+        modeFrenzyBtn.classList.remove('border-yellow-400', 'bg-yellow-500/20', 'text-yellow-200');
+      }
+    }
+
+    modeFrenzyBtn.addEventListener('click', () => {
+      gameMode = 'frenzy';
+      syncModalModeButtons();
+    });
+
+    modeClassicBtn.addEventListener('click', () => {
+      gameMode = 'classic';
+      syncModalModeButtons();
+    });
+
+    // Skin selection buttons
+    document.querySelectorAll('.skin-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.skin-btn').forEach(b => b.classList.replace('border-white', 'border-transparent'));
+        btn.classList.replace('border-transparent', 'border-white');
+        currentSkin = btn.getAttribute('data-skin');
+        render();
+      });
+    });
+
+    // Speed selection buttons
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.speed-btn').forEach(b => {
+          b.classList.remove('bg-blue-600', 'border-white');
+          b.classList.add('bg-[#2f4b1c]', 'border-transparent');
+        });
+        btn.classList.add('bg-blue-600', 'border-white');
+        btn.classList.remove('bg-[#2f4b1c]', 'border-transparent');
+        speedSetting = btn.getAttribute('data-speed');
+      });
+    });
+
+    window.onload = function() {
+      resizeCanvas();
+      initSnake();
+      highScoreDisplay.textContent = highScore;
+      updateModeButtonUI();
+      render();
+    };
+  </script>
+</body>
+</html>
