@@ -1,1 +1,1180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Duck Hunt: La Risa del Perro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Press Start 2P', monospace;
+    }
+    
+    body {
+      background-color: #0d1117;
+      touch-action: manipulation;
+    }
 
+    .pixel-art {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* CRT scanline overlay effect */
+    .crt-overlay::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* Gunshot flash effect */
+    .gun-flash {
+      animation: flash-anim 0.08s ease-out;
+    }
+    @keyframes flash-anim {
+      0% { filter: brightness(2.8) contrast(1.5); }
+      100% { filter: brightness(1) contrast(1); }
+    }
+
+    /* Pulsing dog animation */
+    @keyframes dog-snicker {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .snicker {
+      animation: dog-snicker 0.15s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 text-white overflow-hidden">
+
+  <div class="w-full max-w-4xl flex flex-col items-center">
+    
+    <!-- Top Header & Scoreboard -->
+    <header class="w-full flex flex-wrap items-center justify-between bg-black/80 border-4 border-yellow-500 rounded-t-xl px-4 py-2 sm:py-3 mb-1 shadow-lg text-xs sm:text-sm">
+      <div class="flex items-center space-x-2 text-yellow-400">
+        <span class="inline-block w-3 h-3 bg-red-600 rounded-full animate-ping"></span>
+        <h1 class="tracking-widest uppercase">DUCK HUNT '84</h1>
+      </div>
+      <div class="flex items-center space-x-4 sm:space-x-8">
+        <div>RONDA: <span id="ui-round" class="text-green-400">1</span></div>
+        <div>PUNTOS: <span id="ui-score" class="text-yellow-300">000000</span></div>
+        <div>RÉCORD: <span id="ui-hiscore" class="text-orange-400">012000</span></div>
+      </div>
+    </header>
+
+    <div class="relative w-full aspect-[4/3] max-h-[72vh] border-4 border-yellow-500 rounded-b-xl overflow-hidden bg-[#64B0FF] shadow-2xl crt-overlay cursor-crosshair" id="viewport-container">
+      <!-- The Canvas -->
+      <canvas id="gameCanvas" class="w-full h-full block pixel-art"></canvas>
+
+      <!-- Overlay Modals / Menus -->
+      <div id="start-screen" class="absolute inset-0 bg-black/75 flex flex-col items-center justify-center p-4 text-center z-30">
+        <div class="text-2xl sm:text-4xl text-yellow-400 mb-4 tracking-wider animate-pulse drop-shadow-md">
+          DUCK HUNT
+        </div>
+        <p class="text-[10px] sm:text-xs text-green-300 max-w-md leading-relaxed mb-6">
+          ¡Apunta y dispara a los patos antes de que escapen!<br>
+          Si fallas... ¡el perro se burlará de ti!
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-md justify-center mb-6">
+          <button id="btn-mode-1" class="bg-red-600 hover:bg-red-500 text-white text-xs px-4 py-3 rounded-lg border-2 border-white shadow-md active:scale-95 transition-transform">
+            1 PATO / RONDA
+          </button>
+          <button id="btn-mode-2" class="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-3 rounded-lg border-2 border-white shadow-md active:scale-95 transition-transform">
+            2 PATOS (DÚO)
+          </button>
+        </div>
+
+        <div class="text-[9px] text-gray-400 flex items-center gap-2">
+          <span>💡 Mouse / Toca la pantalla para disparar</span>
+        </div>
+      </div>
+
+      <div id="gameover-screen" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-4 text-center z-30 hidden">
+        <h2 class="text-3xl sm:text-5xl text-red-500 mb-4 drop-shadow-lg animate-bounce">
+          GAME OVER
+        </h2>
+        <p class="text-xs sm:text-sm text-yellow-300 mb-2">PUNTUACIÓN FINAL</p>
+        <p id="final-score" class="text-lg sm:text-2xl text-white font-bold mb-6">000000</p>
+        
+        <p id="gameover-message" class="text-[10px] sm:text-xs text-gray-300 max-w-sm mb-6 leading-normal">
+          El perro se fue riéndose de tu puntería...
+        </p>
+
+        <button id="btn-restart" class="bg-green-600 hover:bg-green-500 text-white text-xs px-6 py-3 rounded-lg border-2 border-white shadow-lg active:scale-95 transition-transform">
+          VOLVER A JUGAR
+        </button>
+      </div>
+
+      <!-- Notification Toast -->
+      <div id="game-toast" class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/90 border-2 border-yellow-400 text-yellow-300 px-4 py-2 rounded text-[10px] sm:text-xs pointer-events-none transition-opacity duration-300 opacity-0 z-40">
+        ¡RONDA 1!
+      </div>
+    </div>
+
+    <div class="w-full bg-black/90 border-4 border-yellow-500 rounded-xl mt-1 p-2 sm:p-3 flex flex-wrap items-center justify-between text-[10px] sm:text-xs text-white shadow-lg gap-2">
+      
+      <!-- Ammo Shells Counter -->
+      <div class="flex items-center gap-2">
+        <span class="text-gray-400">BALAS:</span>
+        <div id="ui-ammo" class="flex gap-1.5">
+          <!-- Shell icons inserted dynamically -->
+        </div>
+      </div>
+
+      <!-- Duck Status Indicators (10 ducks in a round) -->
+      <div class="flex items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-700">
+        <span class="text-gray-400 mr-1">PATOS:</span>
+        <div id="ui-duck-list" class="flex gap-1">
+          <!-- 10 duck dots -->
+        </div>
+      </div>
+
+      <!-- Audio & Reset buttons -->
+      <div class="flex items-center gap-2">
+        <button id="btn-sound" class="bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 px-3 py-1.5 rounded text-[9px] active:scale-95 transition">
+          🔊 SONIDO: ON
+        </button>
+        <button id="btn-pause" class="bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 px-3 py-1.5 rounded text-[9px] active:scale-95 transition">
+          ⏸ PAUSA
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Synthesizes retro sounds directly using the browser's Web Audio API
+    class RetroAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playGunshot() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        
+        // Noise blast for the shotgun explosion
+        const bufferSize = this.ctx.sampleRate * 0.18;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1400, now);
+        filter.frequency.exponentialRampToValueAtTime(150, now + 0.16);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.7, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.17);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        whiteNoise.start(now);
+
+        // Low kick tone for punch
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.14);
+        oscGain.gain.setValueAtTime(0.6, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      playDogLaugh() {
+        if (!this.enabled || !this.ctx) return;
+        // Classic Duck Hunt staccato laugh: "he-he-he-he-he-he-he!"
+        const notes = [620, 480, 620, 480, 620, 480, 620, 480, 620, 480];
+        const step = 0.075;
+        const startTime = this.ctx.currentTime + 0.05;
+
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = startTime + idx * step;
+
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + step * 0.85);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + step);
+        });
+      }
+
+      playDuckHit() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.25);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      }
+
+      playDuckFall() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(500, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.65);
+      }
+
+      playDogTriumph() {
+        if (!this.enabled || !this.ctx) return;
+        // Upbeat victory jingle when dog holds caught duck
+        const melody = [330, 392, 523, 659];
+        const now = this.ctx.currentTime;
+        melody.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = now + idx * 0.09;
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.09);
+        });
+      }
+
+      playQuack() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(260, now + 0.08);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+    }
+
+    const audio = new RetroAudioEngine();
+
+    // Helper to generate pixel sprites onto offscreen canvases for crispy retro graphics
+    function createPixelCanvas(width, height, pixelMatrix, colorMap) {
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = height;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const char = pixelMatrix[y] ? pixelMatrix[y][x] : ' ';
+          if (char && char !== ' ' && char !== '.') {
+            const color = colorMap[char];
+            if (color) {
+              ctx.fillStyle = color;
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+      }
+      return c;
+    }
+
+    // Color Palettes
+    const PALETTE = {
+      BLACK: '#000000',
+      WHITE: '#FCFCFC',
+      BROWN: '#B84400',
+      LIGHT_BROWN: '#E48400',
+      SKIN: '#F8B880',
+      GREEN_MALLARD: '#00A800',
+      DARK_GREEN: '#005800',
+      ORANGE_BEAK: '#F85800',
+      BLUE_FEATHER: '#4488F8',
+      RED_EYE: '#E40000'
+    };
+
+    // Laughing Dog Sprite Matrix (faithful to the user's provided image!)
+    // Brown coat, black ears, paws cupped over mouth, squinting laughing eyes
+    const DOG_LAUGH_FRAME_1 = [
+      "......BBBB......BBBB......",
+      ".....BBBBBB....BBBBBB.....",
+      "....BBBBBBBB..BBBBBBBB....",
+      "....BBB..BBBBBBBB..BBB....",
+      "....BB...BBBBBBBB...BB....",
+      "....BB..BBBBBBBBBB..BB....",
+      "........NNNNNNNNNN........",
+      ".......NNNSSSSSSNNN.......",
+      ".......NSSWWSSWWSSN.......",
+      ".......NSWWBBWWBBSSN......",
+      ".......NSWWB..WWBNN.......",
+      "........NSSSSSSSSN........",
+      ".........NNNBBNNN.........",
+      ".......NNWWWWWWWWNN.......",
+      "......NWWWBWWWWWBWWWN.....",
+      ".....NNWWWBWWWWWBWWWNN....",
+      "....NNNNNWWWWWWWWNNNNN....",
+      "...NNNNNNNWWWWWWNNNNNNN...",
+      "...NNNNNNNNNNNNNNNNNNNN...",
+      "...NNNNNNNSSSSSSNNNNNNN...",
+      "...NNNNNNSSSSSSSSNNNNNN...",
+      "....NNNNNSSSSSSSSNNNNN....",
+      ".....NNNNSSSSSSSSNNNN.....",
+      "......NNNNNNNNNNNNNN......"
+    ];
+
+    const DOG_LAUGH_FRAME_2 = [
+      "......BBBB......BBBB......",
+      ".....BBBBBB....BBBBBB.....",
+      "....BBBBBBBB..BBBBBBBB....",
+      "....BBB..BBBBBBBB..BBB....",
+      "....BB...BBBBBBBB...BB....",
+      "....BB..BBBBBBBBBB..BB....",
+      "........NNNNNNNNNN........",
+      ".......NNNSSSSSSNNN.......",
+      ".......NSSBBSBBSBNN.......",
+      ".......NSBBBBBBBBSSN......",
+      ".......NSBBBBBBBBBNN......",
+      "........NSSSSSSSSN........",
+      ".........NNNBBNNN.........",
+      ".......NNWWWWWWWWNN.......",
+      "......NWWWWWWWWWWWWWN.....",
+      ".....NNWWWWBWWWBWWWWNN....",
+      "....NNNNNWWWWWWWWNNNNN....",
+      "...NNNNNNNWWWWWWNNNNNNN...",
+      "...NNNNNNNNNNNNNNNNNNNN...",
+      "...NNNNNNNSSSSSSNNNNNNN...",
+      "...NNNNNNSSSSSSSSNNNNNN...",
+      "....NNNNNSSSSSSSSNNNNN....",
+      ".....NNNNSSSSSSSSNNNN.....",
+      "......NNNNNNNNNNNNNN......"
+    ];
+
+    // Dog holding duck proudly frame
+    const DOG_GOT_DUCK_FRAME = [
+      "......BBBB......BBBB......",
+      ".....BBBBBB....BBBBBB.....",
+      "....BBBBBBBB..BBBBBBBB....",
+      "....BBB..BBBBBBBB..BBB....",
+      "....BB...BBBBBBBB...BB....",
+      "........NNNNNNNNNN........",
+      ".......NNNSSSSSSNNN.......",
+      ".......NSSWWSSWWSSN.......",
+      ".......NSWWBBWWBBSSN......",
+      "........NSSSSSSSSN........",
+      "....GG...NNNBBNNN...GG....",
+      "...GGGG.NWWWWWWWWN.GGGG...",
+      "..GGGGOOONWWWWWWNOOOGGGG..",
+      "..GGGGOOONNWWWWNNOOOGGGG..",
+      "...GGGG..NNNNNNNN..GGGG...",
+      ".........NNNNNNNN.........",
+      "........NNNNNNNNNN........",
+      ".......NNNNSSSSNNNN.......",
+      ".......NNNSSSSSSNNN.......",
+      "........NNNNNNNNNN........"
+    ];
+
+    const dogColorMap = {
+      'B': PALETTE.BLACK,
+      'W': PALETTE.WHITE,
+      'N': PALETTE.BROWN,
+      'S': PALETTE.SKIN,
+      'G': PALETTE.DARK_GREEN,
+      'O': PALETTE.ORANGE_BEAK
+    };
+
+    // Flying Duck Frames (Wings Up, Wings Mid, Wings Down)
+    const DUCK_FRAME_UP = [
+      "....GGGGGGGG....",
+      "...GGGGGGGGGG...",
+      "...GGWWGGWWGG...",
+      "...GGWWGGWWGG...",
+      "...GGBBGGBBGG...",
+      "....OOOOOOOO....",
+      "..W.OOOOOOOO....",
+      ".WWW.BBBBBB.....",
+      "WWWWBBBBBBBB....",
+      "WWWWBBBBBSSBB...",
+      ".WWWBBBBSSSSBB..",
+      "..W.BBBBSSSSBB..",
+      "....BBBBSSSSBB..",
+      ".....BBBBSSBB...",
+      "......BBBBBB....",
+      ".......OOOO....."
+    ];
+
+    const DUCK_FRAME_MID = [
+      "....GGGGGGGG....",
+      "...GGGGGGGGGG...",
+      "...GGWWGGWWGG...",
+      "...GGWWGGWWGG...",
+      "...GGBBGGBBGG...",
+      "....OOOOOOOO....",
+      "....OOOOOOOO....",
+      "WWWWWWBBBBBB....",
+      "WWWWWWBBBBBBBB..",
+      "WWWWWWBBBBSSBB..",
+      "......BBBBSSSSBB",
+      "......BBBBSSSSBB",
+      ".....BBBBSSBB...",
+      "......BBBBBB....",
+      ".......OOOO.....",
+      "................"
+    ];
+
+    const DUCK_FRAME_DOWN = [
+      "....GGGGGGGG....",
+      "...GGGGGGGGGG...",
+      "...GGWWGGWWGG...",
+      "...GGWWGGWWGG...",
+      "...GGBBGGBBGG...",
+      "....OOOOOOOO....",
+      "....OOOOOOOO....",
+      ".....BBBBBB.....",
+      "....BBBBBBBB....",
+      "....BBBBBSSBB...",
+      "....BBBBSSSSBB..",
+      "WWWWBBBBSSSSBB..",
+      "WWWW.BBBSSSSBB..",
+      ".WWW..BBBBSSBB..",
+      "..W....BBBBBB...",
+      "........OOOO...."
+    ];
+
+    // Duck Shot (surprise) & Falling Frames
+    const DUCK_SHOT_FRAME = [
+      ".....GGGGGG.....",
+      "....GGRRGGRRG...",
+      "....GGRRGGRRG...",
+      "....GGWWGGWWG...",
+      ".....OOOOOO.....",
+      "....WWBBBBWW....",
+      "...WWWWBBWWWW...",
+      "..WWWWWWWWWWWW..",
+      "...WWWWBBWWWW...",
+      "....WWBBBBWW....",
+      ".....BBSSBB.....",
+      "....BBSSSSBB....",
+      "....BBSSSSBB....",
+      ".....BBSSBB.....",
+      "......OOOO......",
+      "................"
+    ];
+
+    const duckColorMap = {
+      'G': PALETTE.GREEN_MALLARD,
+      'W': PALETTE.WHITE,
+      'B': PALETTE.BROWN,
+      'S': PALETTE.SKIN,
+      'O': PALETTE.ORANGE_BEAK,
+      'R': PALETTE.RED_EYE
+    };
+
+    // Pre-rendering sprites into offscreen canvases
+    const SPRITES = {
+      dogLaugh1: createPixelCanvas(26, 24, DOG_LAUGH_FRAME_1, dogColorMap),
+      dogLaugh2: createPixelCanvas(26, 24, DOG_LAUGH_FRAME_2, dogColorMap),
+      dogGotDuck: createPixelCanvas(26, 20, DOG_GOT_DUCK_FRAME, dogColorMap),
+      duckUp: createPixelCanvas(16, 16, DUCK_FRAME_UP, duckColorMap),
+      duckMid: createPixelCanvas(16, 16, DUCK_FRAME_MID, duckColorMap),
+      duckDown: createPixelCanvas(16, 16, DUCK_FRAME_DOWN, duckColorMap),
+      duckShot: createPixelCanvas(16, 16, DUCK_SHOT_FRAME, duckColorMap)
+    };
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('viewport-container');
+
+    // Virtual Internal Resolution (classic retro aspect 4:3)
+    const V_WIDTH = 512;
+    const V_HEIGHT = 384;
+
+    function resizeCanvas() {
+      canvas.width = V_WIDTH;
+      canvas.height = V_HEIGHT;
+      ctx.imageSmoothingEnabled = false;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const GAME_STATES = {
+      MENU: 'MENU',
+      INTRO: 'INTRO',
+      PLAYING: 'PLAYING',
+      ROUND_CLEAR: 'ROUND_CLEAR',
+      DOG_TAUNT: 'DOG_TAUNT',
+      ROUND_OVER: 'ROUND_OVER',
+      GAME_OVER: 'GAME_OVER'
+    };
+
+    let state = GAME_STATES.MENU;
+    let score = 0;
+    let hiScore = 12000;
+    let round = 1;
+    let ammo = 3;
+    let maxDucksPerRound = 10;
+    let ducksInWave = 1; // 1 or 2
+    let waveIndex = 0; // 0 to 10 ducks count
+    let ducksHitInRound = 0;
+    let roundDuckResults = []; // array of 'HIT', 'MISSED', 'PENDING'
+    let isPaused = false;
+
+    let ducks = [];
+    let dog = {
+      x: V_WIDTH / 2,
+      y: V_HEIGHT - 60,
+      targetY: V_HEIGHT - 60,
+      state: 'HIDDEN', // 'LAUGHING', 'TRIUMPH', 'RISING', 'LOWERING', 'HIDDEN'
+      timer: 0,
+      frame: 0
+    };
+
+    let floatingTexts = [];
+    let clouds = [
+      { x: 40, y: 50, speed: 0.15, size: 1.2 },
+      { x: 260, y: 75, speed: 0.08, size: 0.9 },
+      { x: 420, y: 35, speed: 0.12, size: 1.1 }
+    ];
+
+    class Duck {
+      constructor(type = 'NORMAL') {
+        this.type = type; // NORMAL, FAST, BONUS
+        this.width = 38;
+        this.height = 38;
+        this.x = Math.random() * (V_WIDTH - 120) + 60;
+        this.y = V_HEIGHT - 100;
+        
+        // Random velocity upwards
+        const angle = -Math.PI / 2 + (Math.random() * 1.2 - 0.6);
+        const baseSpeed = 2.4 + round * 0.35 + (type === 'FAST' ? 1.5 : 0);
+        this.vx = Math.cos(angle) * baseSpeed;
+        this.vy = Math.sin(angle) * baseSpeed;
+
+        this.status = 'FLYING'; // 'FLYING', 'SHOT', 'FALLING', 'ESCAPED'
+        this.animTimer = 0;
+        this.animFrame = 0;
+        this.flightTimer = 0;
+        this.maxFlightTime = Math.max(300, 600 - round * 25); // ~6-10 seconds
+        this.fallSpeed = 4.2;
+        this.quackTimer = Math.floor(Math.random() * 60) + 30;
+      }
+
+      update() {
+        if (this.status === 'FLYING') {
+          this.flightTimer++;
+
+          // Periodic duck quacking
+          this.quackTimer--;
+          if (this.quackTimer <= 0) {
+            audio.playQuack();
+            this.quackTimer = Math.floor(Math.random() * 140) + 80;
+          }
+
+          // If time is up, fly away up into the sky!
+          if (this.flightTimer > this.maxFlightTime) {
+            this.vy = -4.5;
+            this.vx = (this.vx > 0 ? 1 : -1) * 1.2;
+            if (this.y < -50) {
+              this.status = 'ESCAPED';
+            }
+          } else {
+            // Normal bouncing off walls
+            if (this.x <= 20) {
+              this.x = 20;
+              this.vx = Math.abs(this.vx);
+            } else if (this.x + this.width >= V_WIDTH - 20) {
+              this.x = V_WIDTH - 20 - this.width;
+              this.vx = -Math.abs(this.vx);
+            }
+
+            // Bounce off top and grass boundary
+            if (this.y <= 25) {
+              this.y = 25;
+              this.vy = Math.abs(this.vy);
+            } else if (this.y >= V_HEIGHT - 120) {
+              this.y = V_HEIGHT - 120;
+              this.vy = -Math.abs(this.vy);
+            }
+
+            // Slight random direction change
+            if (Math.random() < 0.02) {
+              this.vy += (Math.random() - 0.5) * 1.2;
+              this.vx += (Math.random() - 0.5) * 1.2;
+            }
+          }
+
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Animation frame
+          this.animTimer++;
+          if (this.animTimer % 8 === 0) {
+            this.animFrame = (this.animFrame + 1) % 3;
+          }
+        } 
+        else if (this.status === 'SHOT') {
+          // Pause momentarily in mid-air in surprise
+          this.animTimer++;
+          if (this.animTimer > 18) {
+            this.status = 'FALLING';
+            audio.playDuckFall();
+          }
+        } 
+        else if (this.status === 'FALLING') {
+          this.y += this.fallSpeed;
+          this.animTimer++;
+          // Fall through grass then terminate
+          if (this.y > V_HEIGHT - 70) {
+            this.status = 'DEAD';
+          }
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+        // Flip duck depending on horizontal velocity
+        if (this.vx < 0 && this.status === 'FLYING') {
+          ctx.scale(-1, 1);
+        }
+
+        if (this.status === 'FLYING') {
+          let sprite = SPRITES.duckMid;
+          if (this.animFrame === 0) sprite = SPRITES.duckUp;
+          else if (this.animFrame === 1) sprite = SPRITES.duckMid;
+          else sprite = SPRITES.duckDown;
+
+          ctx.drawImage(sprite, -this.width / 2, -this.height / 2, this.width, this.height);
+        } 
+        else if (this.status === 'SHOT') {
+          ctx.drawImage(SPRITES.duckShot, -this.width / 2, -this.height / 2, this.width, this.height);
+        } 
+        else if (this.status === 'FALLING') {
+          // Tumbling duck
+          ctx.rotate(Math.PI);
+          const sprite = (Math.floor(this.animTimer / 6) % 2 === 0) ? SPRITES.duckUp : SPRITES.duckMid;
+          ctx.drawImage(sprite, -this.width / 2, -this.height / 2, this.width, this.height);
+        }
+
+        ctx.restore();
+      }
+
+      isHit(mx, my) {
+        if (this.status !== 'FLYING') return false;
+        // Hitbox generous enough for touch and responsive scaling
+        const hitMargin = 16;
+        return (
+          mx >= this.x - hitMargin &&
+          mx <= this.x + this.width + hitMargin &&
+          my >= this.y - hitMargin &&
+          my <= this.y + this.height + hitMargin
+        );
+      }
+    }
+
+    function triggerDogAppearance(mode) {
+      dog.state = mode; // 'LAUGHING' or 'TRIUMPH'
+      dog.timer = 0;
+      dog.x = V_WIDTH / 2;
+      dog.y = V_HEIGHT - 65;
+      dog.targetY = V_HEIGHT - 150;
+
+      if (mode === 'LAUGHING') {
+        audio.playDogLaugh();
+      } else if (mode === 'TRIUMPH') {
+        audio.playDogTriumph();
+      }
+    }
+
+    function updateDog() {
+      if (dog.state === 'HIDDEN') return;
+
+      dog.timer++;
+
+      // Dog rising from the tall grass
+      if (dog.y > dog.targetY && dog.timer < 120) {
+        dog.y -= 2.2;
+      }
+
+      // Dog stays up, then ducks back down
+      if (dog.timer >= 120) {
+        dog.y += 2.8;
+        if (dog.y >= V_HEIGHT - 65) {
+          dog.state = 'HIDDEN';
+          onDogCycleComplete();
+        }
+      }
+
+      if (dog.timer % 6 === 0) {
+        dog.frame = (dog.frame + 1) % 2;
+      }
+    }
+
+    function drawDog() {
+      if (dog.state === 'HIDDEN') return;
+
+      ctx.save();
+      const dogWidth = 72;
+      const dogHeight = 68;
+
+      let sprite = SPRITES.dogLaugh1;
+      if (dog.state === 'LAUGHING') {
+        // Laughing shaking dog: matches user's provided retro image!
+        sprite = dog.frame === 0 ? SPRITES.dogLaugh1 : SPRITES.dogLaugh2;
+        // Slight vertical bounce for comedic snicker
+        const bounce = (dog.frame === 0) ? -2 : 0;
+        ctx.drawImage(sprite, dog.x - dogWidth / 2, dog.y + bounce, dogWidth, dogHeight);
+      } else if (dog.state === 'TRIUMPH') {
+        sprite = SPRITES.dogGotDuck;
+        ctx.drawImage(sprite, dog.x - dogWidth / 2, dog.y, dogWidth, dogHeight);
+      }
+
+      ctx.restore();
+    }
+
+    function drawScenery() {
+      // 1. Sky
+      ctx.fillStyle = '#64B0FF';
+      ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+      // 2. Drifting pixel clouds
+      ctx.fillStyle = '#FFFFFF';
+      clouds.forEach(c => {
+        c.x += c.speed;
+        if (c.x > V_WIDTH + 60) c.x = -80;
+
+        ctx.beginPath();
+        const bw = 50 * c.size;
+        const bh = 18 * c.size;
+        ctx.fillRect(c.x, c.y, bw, bh);
+        ctx.fillRect(c.x + 8, c.y - 8, bw - 16, bh + 16);
+        ctx.fillRect(c.x + 16, c.y - 14, bw - 32, bh + 24);
+      });
+
+      // 3. Distant Tree
+      ctx.fillStyle = '#684018'; // Trunk
+      ctx.fillRect(70, V_HEIGHT - 170, 16, 90);
+      ctx.fillStyle = '#207800'; // Foliage
+      ctx.beginPath();
+      ctx.arc(78, V_HEIGHT - 180, 42, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#38A000';
+      ctx.beginPath();
+      ctx.arc(74, V_HEIGHT - 188, 30, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Bush on right
+      ctx.fillStyle = '#288800';
+      ctx.beginPath();
+      ctx.arc(430, V_HEIGHT - 95, 36, 0, Math.PI * 2);
+      ctx.arc(460, V_HEIGHT - 90, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#48B810';
+      ctx.beginPath();
+      ctx.arc(425, V_HEIGHT - 100, 24, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Foreground grass rendered IN FRONT of dog and ducks
+    function drawForegroundGrass() {
+      // Tall grass ground
+      ctx.fillStyle = '#80D010';
+      ctx.fillRect(0, V_HEIGHT - 80, V_WIDTH, 45);
+
+      // Dark soil at the very bottom
+      ctx.fillStyle = '#443818';
+      ctx.fillRect(0, V_HEIGHT - 35, V_WIDTH, 35);
+      ctx.fillStyle = '#2B230C';
+      ctx.fillRect(0, V_HEIGHT - 10, V_WIDTH, 10);
+
+      // Grass blades details
+      ctx.fillStyle = '#FFFFFF';
+      for (let x = 8; x < V_WIDTH; x += 18) {
+        ctx.fillRect(x, V_HEIGHT - 85, 2, 7);
+        ctx.fillRect(x + 4, V_HEIGHT - 88, 3, 10);
+      }
+
+      ctx.fillStyle = '#488800';
+      for (let x = 4; x < V_WIDTH; x += 14) {
+        ctx.fillRect(x, V_HEIGHT - 82, 3, 12);
+        ctx.fillRect(x + 5, V_HEIGHT - 78, 2, 8);
+      }
+    }
+
+    function addFloatingScore(points, x, y) {
+      floatingTexts.push({
+        text: `+${points}`,
+        x: x,
+        y: y,
+        alpha: 1.0,
+        dy: -1.2
+      });
+    }
+
+    function updateAndDrawFloatingTexts() {
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y += ft.dy;
+        ft.alpha -= 0.025;
+
+        ctx.save();
+        ctx.font = '12px "Press Start 2P"';
+        ctx.fillStyle = `rgba(255, 255, 255, ${ft.alpha})`;
+        ctx.strokeStyle = `rgba(0, 0, 0, ${ft.alpha})`;
+        ctx.lineWidth = 3;
+        ctx.strokeText(ft.text, ft.x - 20, ft.y);
+        ctx.fillText(ft.text, ft.x - 20, ft.y);
+        ctx.restore();
+
+        if (ft.alpha <= 0) {
+          floatingTexts.splice(i, 1);
+        }
+      }
+    }
+
+    const uiRound = document.getElementById('ui-round');
+    const uiScore = document.getElementById('ui-score');
+    const uiHiScore = document.getElementById('ui-hiscore');
+    const uiAmmo = document.getElementById('ui-ammo');
+    const uiDuckList = document.getElementById('ui-duck-list');
+    const toast = document.getElementById('game-toast');
+
+    function showToast(msg) {
+      toast.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 1600);
+    }
+
+    function updateUI() {
+      uiRound.innerText = round;
+      uiScore.innerText = score.toString().padStart(6, '0');
+      uiHiScore.innerText = hiScore.toString().padStart(6, '0');
+
+      // Bullets
+      uiAmmo.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const shell = document.createElement('div');
+        shell.className = `w-3 h-5 rounded-t-sm border border-black transition-colors ${
+          i < ammo ? 'bg-red-500 shadow-sm' : 'bg-neutral-700 opacity-40'
+        }`;
+        uiAmmo.appendChild(shell);
+      }
+
+      // 10 Duck round tracker
+      uiDuckList.innerHTML = '';
+      for (let i = 0; i < maxDucksPerRound; i++) {
+        const d = document.createElement('div');
+        const st = roundDuckResults[i] || 'PENDING';
+        let colorClass = 'bg-neutral-600';
+        if (st === 'HIT') colorClass = 'bg-red-500 animate-pulse';
+        if (st === 'MISSED') colorClass = 'bg-white opacity-40';
+        d.className = `w-2.5 h-2.5 rounded-full ${colorClass}`;
+        uiDuckList.appendChild(d);
+      }
+    }
+
+    function startNewGame(numDucks = 1) {
+      ducksInWave = numDucks;
+      score = 0;
+      round = 1;
+      startRound();
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('gameover-screen').classList.add('hidden');
+    }
+
+    function startRound() {
+      waveIndex = 0;
+      ducksHitInRound = 0;
+      roundDuckResults = new Array(maxDucksPerRound).fill('PENDING');
+      updateUI();
+      showToast(`¡RONDA ${round}!`);
+      setTimeout(spawnDuckWave, 1800);
+    }
+
+    function spawnDuckWave() {
+      if (waveIndex >= maxDucksPerRound) {
+        evaluateRoundEnd();
+        return;
+      }
+
+      ammo = 3;
+      ducks = [];
+      const count = Math.min(ducksInWave, maxDucksPerRound - waveIndex);
+
+      for (let i = 0; i < count; i++) {
+        const isFast = Math.random() < (0.2 + round * 0.08);
+        ducks.push(new Duck(isFast ? 'FAST' : 'NORMAL'));
+      }
+
+      state = GAME_STATES.PLAYING;
+      updateUI();
+    }
+
+    function checkWaveResolution() {
+      if (state !== GAME_STATES.PLAYING) return;
+
+      const allResolved = ducks.every(d => d.status === 'DEAD' || d.status === 'ESCAPED');
+      if (!allResolved) return;
+
+      // Determine wave outcome
+      const hits = ducks.filter(d => d.status === 'DEAD').length;
+      const missed = ducks.filter(d => d.status === 'ESCAPED').length;
+
+      for (let i = 0; i < hits; i++) {
+        roundDuckResults[waveIndex + i] = 'HIT';
+        ducksHitInRound++;
+      }
+      for (let i = 0; i < missed; i++) {
+        roundDuckResults[waveIndex + hits + i] = 'MISSED';
+      }
+
+      waveIndex += ducks.length;
+      updateUI();
+
+      // Dog reaction!
+      state = GAME_STATES.DOG_TAUNT;
+      if (hits > 0 && missed === 0) {
+        // Player got all ducks in wave: Triumph!
+        triggerDogAppearance('TRIUMPH');
+      } else {
+        // Ducks escaped: Iconic Laughing Dog pops up!
+        triggerDogAppearance('LAUGHING');
+      }
+    }
+
+    function onDogCycleComplete() {
+      if (waveIndex >= maxDucksPerRound) {
+        evaluateRoundEnd();
+      } else {
+        setTimeout(spawnDuckWave, 600);
+      }
+    }
+
+    function evaluateRoundEnd() {
+      const requiredHits = Math.min(6 + Math.floor(round * 0.8), 10);
+      if (ducksHitInRound >= requiredHits) {
+        // Round cleared!
+        const bonus = ducksHitInRound * 200 + round * 500;
+        score += bonus;
+        addFloatingScore(bonus, V_WIDTH / 2, V_HEIGHT / 2);
+        round++;
+        showToast(`¡RONDA SUPERADA! +${bonus} PTS`);
+        setTimeout(startRound, 2200);
+      } else {
+        // Game Over: Failed to qualify
+        triggerGameOver();
+      }
+    }
+
+    function triggerGameOver() {
+      state = GAME_STATES.GAME_OVER;
+      if (score > hiScore) {
+        hiScore = score;
+      }
+      updateUI();
+
+      document.getElementById('final-score').innerText = score.toString().padStart(6, '0');
+      document.getElementById('gameover-message').innerText = 
+        `Acertaste ${ducksHitInRound} de ${maxDucksPerRound} patos. ¡El perro ganó esta vez!`;
+      document.getElementById('gameover-screen').classList.remove('hidden');
+    }
+
+    function handleFire(clientX, clientY) {
+      audio.init();
+
+      if (state !== GAME_STATES.PLAYING) return;
+      if (ammo <= 0) return;
+
+      ammo--;
+      audio.playGunshot();
+
+      // Screen Flash animation
+      container.classList.add('gun-flash');
+      setTimeout(() => container.classList.remove('gun-flash'), 90);
+
+      // Convert Screen coordinates to Canvas Virtual Resolution
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = V_WIDTH / rect.width;
+      const scaleY = V_HEIGHT / rect.height;
+      const mouseX = (clientX - rect.left) * scaleX;
+      const mouseY = (clientY - rect.top) * scaleY;
+
+      let hitAny = false;
+
+      // Check hit against active flying ducks
+      ducks.forEach(duck => {
+        if (duck.isHit(mouseX, mouseY)) {
+          duck.status = 'SHOT';
+          duck.animTimer = 0;
+          hitAny = true;
+          const points = duck.type === 'FAST' ? 1000 : 500;
+          score += points;
+          addFloatingScore(points, duck.x, duck.y);
+          audio.playDuckHit();
+        }
+      });
+
+      // Easter egg: You can shoot the laughing dog!
+      if (dog.state === 'LAUGHING' && mouseY > dog.y && mouseY < dog.y + 70 && Math.abs(mouseX - dog.x) < 35) {
+        showToast("¡NO ME DISPARES! >_<");
+      }
+
+      // If out of bullets, ducks fly away!
+      if (ammo === 0) {
+        ducks.forEach(d => {
+          if (d.status === 'FLYING') {
+            d.flightTimer = d.maxFlightTime + 1; // force fly away
+          }
+        });
+      }
+
+      updateUI();
+    }
+
+    // Pointer and Touch listeners
+    container.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      handleFire(e.clientX, e.clientY);
+    });
+
+    document.getElementById('btn-mode-1').addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.init();
+      startNewGame(1);
+    });
+
+    document.getElementById('btn-mode-2').addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.init();
+      startNewGame(2);
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.init();
+      startNewGame(ducksInWave);
+    });
+
+    const btnSound = document.getElementById('btn-sound');
+    btnSound.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.init();
+      audio.enabled = !audio.enabled;
+      btnSound.innerText = audio.enabled ? '🔊 SONIDO: ON' : '🔇 SONIDO: OFF';
+    });
+
+    const btnPause = document.getElementById('btn-pause');
+    btnPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isPaused = !isPaused;
+      btnPause.innerText = isPaused ? '▶ REANUDAR' : '⏸ PAUSA';
+      if (isPaused) {
+        showToast('PAUSA');
+      }
+    });
+
+    function gameLoop() {
+      if (!isPaused) {
+        // 1. Draw Background Sky, Clouds, Tree & Bush
+        drawScenery();
+
+        // 2. Update and draw ducks
+        if (state === GAME_STATES.PLAYING) {
+          ducks.forEach(d => {
+            d.update();
+            d.draw();
+          });
+          checkWaveResolution();
+        } else if (state === GAME_STATES.DOG_TAUNT) {
+          // Keep drawing falling ducks if any
+          ducks.forEach(d => {
+            if (d.status === 'FALLING') {
+              d.update();
+              d.draw();
+            }
+          });
+        }
+
+        // 3. Update and draw dog behind the foreground grass
+        updateDog();
+        drawDog();
+
+        // 4. Draw Foreground Grass blades (covers dog & bottom of ducks)
+        drawForegroundGrass();
+
+        // 5. Draw Floating text score popups
+        updateAndDrawFloatingTexts();
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start loop upon window loading
+    window.onload = function() {
+      updateUI();
+      gameLoop();
+    };
+  </script>
+</body>
+</html>
