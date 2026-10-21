@@ -1,1 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong Arcade</title>
+    <!-- Tailwind CSS for modern UI controls and styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for arcade typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #fce38a;
+            user-select: none;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        .retro-shadow {
+            box-shadow: 4px 4px 0px #333;
+        }
+        .retro-shadow-sm {
+            box-shadow: 2px 2px 0px #333;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center h-screen w-screen m-0 p-0">
 
+    <!-- Top Header & Scoreboard -->
+    <div id="ui-container" class="absolute top-4 w-full max-w-md flex justify-between items-center px-6 z-10 pointer-events-none">
+        <div class="bg-teal-500 text-white px-4 py-2 rounded-xl border-4 border-gray-900 retro-shadow flex items-center gap-2">
+            <span class="text-xs uppercase font-bold tracking-wider">Jugador 1</span>
+            <span id="p1-score" class="text-2xl font-black">0</span>
+        </div>
+        <div class="bg-amber-400 text-gray-900 px-3 py-1.5 rounded-xl border-4 border-gray-900 retro-shadow text-xs font-bold uppercase tracking-widest" id="match-status">
+            ¡A Jugar!
+        </div>
+        <div class="bg-rose-500 text-white px-4 py-2 rounded-xl border-4 border-gray-900 retro-shadow flex items-center gap-2">
+            <span id="p2-score" class="text-2xl font-black">0</span>
+            <span class="text-xs uppercase font-bold tracking-wider" id="p2-label">CPU</span>
+        </div>
+    </div>
+
+    <!-- Main Game Container -->
+    <div class="relative w-full h-full flex items-center justify-center p-4">
+        <canvas id="gameCanvas" class="rounded-3xl border-8 border-gray-900 retro-shadow max-w-full max-h-[85vh] bg-[#ff6b6b]"></canvas>
+
+        <!-- Start / Pause Menu Overlay -->
+        <div id="menu-overlay" class="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+            <div class="bg-amber-100 border-8 border-gray-900 rounded-3xl p-8 max-w-sm w-full text-center retro-shadow transform -rotate-1">
+                <h1 class="text-4xl font-black text-rose-600 mb-2 drop-shadow">PING PONG</h1>
+                <p class="text-gray-700 font-semibold mb-6 text-sm">¡Derrota a tu oponente con reflejos rápidos!</p>
+                
+                <div class="space-y-3 mb-6">
+                    <button onclick="startGame('cpu')" class="w-full bg-teal-400 hover:bg-teal-500 text-gray-900 font-bold py-3 px-6 rounded-xl border-4 border-gray-900 retro-shadow-sm transition transform active:translate-y-1">
+                        🤖 1 Jugador (vs CPU)
+                    </button>
+                    <button onclick="startGame('2p')" class="w-full bg-rose-400 hover:bg-rose-500 text-gray-900 font-bold py-3 px-6 rounded-xl border-4 border-gray-900 retro-shadow-sm transition transform active:translate-y-1">
+                        👥 2 Jugadores (Local)
+                    </button>
+                </div>
+
+                <div class="bg-white/80 p-3 rounded-xl border-2 border-gray-900 text-xs text-gray-600">
+                    <p class="font-bold mb-1">Controles:</p>
+                    <p>🖱️ Mueve el mouse o arrastra tu pala.</p>
+                    <p>⌨️ Teclas W/S (Jugador 2 en modo 2P).</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Notification Modal (No alert) -->
+        <div id="modal-msg" class="hidden absolute inset-0 bg-black/60 flex items-center justify-center z-30">
+            <div class="bg-white border-8 border-gray-900 rounded-3xl p-6 text-center max-w-xs w-full retro-shadow">
+                <h3 id="modal-title" class="text-2xl font-black text-rose-600 mb-2">¡Fin del Juego!</h3>
+                <p id="modal-text" class="text-gray-700 mb-6 font-semibold">El jugador 1 ha ganado la partida.</p>
+                <button onclick="returnToMenu()" class="bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold py-3 px-6 rounded-xl border-4 border-gray-900 retro-shadow-sm transition">
+                    Volver al Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Audio context for retro sound effects
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(frequency, type, duration) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                // Audio restrictions fallback
+            }
+        }
+
+        // Game Configuration & State
+        let gameRunning = false;
+        let gameMode = 'cpu'; // 'cpu' or '2p'
+        let targetWidth = 450;
+        let targetHeight = 700;
+
+        const state = {
+            p1Score: 0,
+            p2Score: 0,
+            winningScore: 5,
+            ball: {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                radius: 12,
+                speed: 6,
+                maxSpeed: 12,
+                trail: []
+            },
+            paddle1: {
+                x: 0,
+                y: 0,
+                width: 90,
+                height: 28,
+                color: '#ec4899', // Pink paddle (Player 1 - Bottom)
+                targetX: 0
+            },
+            paddle2: {
+                x: 0,
+                y: 0,
+                width: 90,
+                height: 28,
+                color: '#14b8a6', // Teal paddle (Player 2 / CPU - Top)
+                targetX: 0
+            },
+            particles: [],
+            keys: {}
+        };
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxWidth = container.clientWidth - 32;
+            const maxHeight = container.clientHeight - 32;
+
+            let scale = Math.min(maxWidth / targetWidth, maxHeight / targetHeight);
+            if (scale > 1) scale = 1;
+
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            canvas.style.width = (targetWidth * scale) + 'px';
+            canvas.style.height = (targetHeight * scale) + 'px';
+
+            resetPositions();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function resetPositions() {
+            state.ball.x = targetWidth / 2;
+            state.ball.y = targetHeight / 2;
+            state.ball.vx = (Math.random() > 0.5 ? 1 : -1) * 4;
+            state.ball.vy = (Math.random() > 0.5 ? 1 : -1) * 5;
+            state.ball.speed = 6;
+            state.ball.trail = [];
+
+            state.paddle1.x = targetWidth / 2 - state.paddle1.width / 2;
+            state.paddle1.y = targetHeight - 60;
+            state.paddle1.targetX = state.paddle1.x;
+
+            state.paddle2.x = targetWidth / 2 - state.paddle2.width / 2;
+            state.paddle2.y = 40;
+            state.paddle2.targetX = state.paddle2.x;
+        }
+
+        // Mouse and Touch controls for Player 1
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = targetWidth / rect.width;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            state.paddle1.targetX = mouseX - state.paddle1.width / 2;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!gameRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = targetWidth / rect.width;
+            const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+            state.paddle1.targetX = touchX - state.paddle1.width / 2;
+            e.preventDefault();
+        }, { passive: false });
+
+        // Keyboard listeners for 2P mode or fallback
+        window.addEventListener('keydown', (e) => {
+            state.keys[e.key.toLowerCase()] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            state.keys[e.key.toLowerCase()] = false;
+        });
+
+        function addParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                state.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 4 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function startGame(mode) {
+            initAudio();
+            gameMode = mode;
+            document.getElementById('p2-label').innerText = mode === 'cpu' ? 'CPU' : 'JUG 2';
+            state.p1Score = 0;
+            state.p2Score = 0;
+            updateScoreUI();
+            document.getElementById('menu-overlay').classList.add('hidden');
+            document.getElementById('modal-msg').classList.add('hidden');
+            gameRunning = true;
+            resetPositions();
+        }
+
+        function updateScoreUI() {
+            document.getElementById('p1-score').innerText = state.p1Score;
+            document.getElementById('p2-score').innerText = state.p2Score;
+        }
+
+        function triggerGameOver(winner) {
+            gameRunning = false;
+            playSound(150, 'sawtooth', 0.5);
+            document.getElementById('modal-title').innerText = winner === 1 ? '¡Victoria Jugador 1! 🎉' : (gameMode === 'cpu' ? '¡La CPU Gana! 🤖' : '¡Victoria Jugador 2! 🎉');
+            document.getElementById('modal-text').innerText = `Marcador final: ${state.p1Score} - ${state.p2Score}`;
+            document.getElementById('modal-msg').classList.remove('hidden');
+        }
+
+        function returnToMenu() {
+            document.getElementById('modal-msg').classList.add('hidden');
+            document.getElementById('menu-overlay').classList.remove('hidden');
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Smooth Paddle 1 movement (Player 1)
+            state.paddle1.x += (state.paddle1.targetX - state.paddle1.x) * 0.3;
+            // Clamp P1 inside bounds
+            if (state.paddle1.x < 15) state.paddle1.x = 15;
+            if (state.paddle1.x > targetWidth - state.paddle1.width - 15) {
+                state.paddle1.x = targetWidth - state.paddle1.width - 15;
+            }
+
+            // Paddle 2 / CPU movement
+            if (gameMode === 'cpu') {
+                // AI tracks ball with slight lag
+                const paddleCenter = state.paddle2.x + state.paddle2.width / 2;
+                const diff = state.ball.x - paddleCenter;
+                state.paddle2.x += diff * 0.08;
+            } else {
+                // Player 2 keyboard controls (W/S or Arrow Keys)
+                if (state.keys['a'] || state.keys['arrowleft']) state.paddle2.x -= 8;
+                if (state.keys['d'] || state.keys['arrowright']) state.paddle2.x += 8;
+            }
+            // Clamp P2 inside bounds
+            if (state.paddle2.x < 15) state.paddle2.x = 15;
+            if (state.paddle2.x > targetWidth - state.paddle2.width - 15) {
+                state.paddle2.x = targetWidth - state.paddle2.width - 15;
+            }
+
+            // Ball trail update
+            state.ball.trail.push({ x: state.ball.x, y: state.ball.y });
+            if (state.ball.trail.length > 8) state.ball.trail.shift();
+
+            // Move ball
+            state.ball.x += state.ball.vx;
+            state.ball.y += state.ball.vy;
+
+            // Side wall collisions
+            if (state.ball.x - state.ball.radius < 15) {
+                state.ball.x = 15 + state.ball.radius;
+                state.ball.vx *= -1;
+                playSound(300, 'sine', 0.05);
+            }
+            if (state.ball.x + state.ball.radius > targetWidth - 15) {
+                state.ball.x = targetWidth - 15 - state.ball.radius;
+                state.ball.vx *= -1;
+                playSound(300, 'sine', 0.05);
+            }
+
+            // Bottom Paddle Collision (Player 1)
+            const p1 = state.paddle1;
+            if (
+                state.ball.y + state.ball.radius >= p1.y &&
+                state.ball.y - state.ball.radius <= p1.y + p1.height &&
+                state.ball.x >= p1.x &&
+                state.ball.x <= p1.x + p1.width &&
+                state.ball.vy > 0
+            ) {
+                playSound(600, 'triangle', 0.1);
+                addParticles(state.ball.x, state.ball.y, '#ec4899');
+                // Calculate hit position relative to paddle center for spin/angle effect
+                const hitPoint = (state.ball.x - (p1.x + p1.width / 2)) / (p1.width / 2);
+                state.ball.vx = hitPoint * 7;
+                state.ball.vy = -Math.abs(state.ball.vy);
+                // Slight speed increase
+                if (state.ball.speed < state.ball.maxSpeed) state.ball.speed += 0.3;
+            }
+
+            // Top Paddle Collision (Player 2 / CPU)
+            const p2 = state.paddle2;
+            if (
+                state.ball.y - state.ball.radius <= p2.y + p2.height &&
+                state.ball.y + state.ball.radius >= p2.y &&
+                state.ball.x >= p2.x &&
+                state.ball.x <= p2.x + p2.width &&
+                state.ball.vy < 0
+            ) {
+                playSound(500, 'triangle', 0.1);
+                addParticles(state.ball.x, state.ball.y, '#14b8a6');
+                const hitPoint = (state.ball.x - (p2.x + p2.width / 2)) / (p2.width / 2);
+                state.ball.vx = hitPoint * 7;
+                state.ball.vy = Math.abs(state.ball.vy);
+                if (state.ball.speed < state.ball.maxSpeed) state.ball.speed += 0.3;
+            }
+
+            // Scoring Checks
+            if (state.ball.y < 0) {
+                // Player 1 scores
+                state.p1Score++;
+                playSound(800, 'square', 0.2);
+                updateScoreUI();
+                if (state.p1Score >= state.winningScore) {
+                    triggerGameOver(1);
+                } else {
+                    resetPositions();
+                }
+            } else if (state.ball.y > targetHeight) {
+                // Player 2 / CPU scores
+                state.p2Score++;
+                playSound(200, 'square', 0.2);
+                updateScoreUI();
+                if (state.p2Score >= state.winningScore) {
+                    triggerGameOver(2);
+                } else {
+                    resetPositions();
+                }
+            }
+
+            // Update particles
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                let p = state.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.03;
+                if (p.alpha <= 0) {
+                    state.particles.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Clear background
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+            // Table borders & inner court layout
+            ctx.strokeStyle = '#2b2b2b';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(15, 15, targetWidth - 30, targetHeight - 30);
+
+            // Center vertical highlight stripe
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(targetWidth / 2 - 12, 15, 24, targetHeight - 30);
+
+            // Center net line (dashed white line)
+            ctx.beginPath();
+            ctx.setLineDash([12, 12]);
+            ctx.moveTo(15, targetHeight / 2);
+            ctx.lineTo(targetWidth - 15, targetHeight / 2);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Draw Ball Trail
+            for (let i = 0; i < state.ball.trail.length; i++) {
+                let t = state.ball.trail[i];
+                let ratio = i / state.ball.trail.length;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, state.ball.radius * ratio, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${ratio * 0.3})`;
+                ctx.fill();
+            }
+
+            // Draw Ball
+            ctx.beginPath();
+            ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // Draw Paddles (Styled like table tennis rackets with handles)
+            function drawPaddle(p, isTop) {
+                ctx.save();
+                ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
+
+                // Handle
+                ctx.fillStyle = '#d97706';
+                ctx.strokeStyle = '#2b2b2b';
+                ctx.lineWidth = 3;
+                if (isTop) {
+                    ctx.fillRect(-8, -p.height / 2 - 16, 16, 20);
+                    ctx.strokeRect(-8, -p.height / 2 - 16, 16, 20);
+                } else {
+                    ctx.fillRect(-8, p.height / 2 - 4, 16, 20);
+                    ctx.strokeRect(-8, p.height / 2 - 4, 16, 20);
+                }
+
+                // Racket head
+                ctx.beginPath();
+                ctx.roundRect(-p.width / 2, -p.height / 2, p.width, p.height, 14);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#2b2b2b';
+                ctx.stroke();
+
+                // Inner white grip shine dots
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath();
+                ctx.arc(-p.width / 3, 0, 4, 0, Math.PI * 2);
+                ctx.arc(p.width / 3, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            drawPaddle(state.paddle2, true);
+            drawPaddle(state.paddle1, false);
+
+            // Draw Particles
+            for (let p of state.particles) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Initial setup on load
+        window.onload = function() {
+            resizeCanvas();
+            loop();
+        };
+    </script>
+</body>
+</html>
