@@ -1,1 +1,1598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Super Bomberman Classic</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Retro Pixel Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Press Start 2P', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      background-color: #0d1117;
+    }
+    
+    /* CRT subtle arcade scanline effect */
+    .arcade-frame {
+      position: relative;
+      box-shadow: 0 0 35px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(0, 0, 0, 0.6);
+    }
+    
+    .arcade-frame::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      z-index: 15;
+      pointer-events: none;
+      opacity: 0.45;
+    }
 
+    /* Pixel art canvas rendering */
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Retro 3D Arcade buttons */
+    .retro-btn {
+      transition: all 0.08s ease-in-out;
+      box-shadow: 0 5px 0 #0f172a, 0 8px 10px rgba(0, 0, 0, 0.5);
+    }
+    .retro-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #0f172a, 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Touch Pad Buttons */
+    .d-btn {
+      touch-action: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 0 #1e293b, 0 6px 8px rgba(0, 0, 0, 0.4);
+    }
+    .d-btn:active, .d-btn.active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #1e293b;
+      filter: brightness(1.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-white flex flex-col items-center justify-between p-2 md:p-4 select-none overflow-x-hidden">
+
+  <!-- Main Arcade Container -->
+  <div class="w-full max-w-4xl flex flex-col items-center">
+    
+    <!-- Top Super Nintendo Style Scoreboard HUD -->
+    <div class="w-full max-w-[650px] mb-2">
+      <div class="relative bg-gradient-to-b from-[#e6a836] via-[#ffd06c] to-[#b37a1f] p-1.5 sm:p-2 rounded-t-xl border-4 border-[#3c1800] shadow-2xl flex items-center justify-between">
+        
+        <!-- P1: White Bomber Score -->
+        <div class="flex items-center gap-1.5 bg-[#1b140d] px-2 py-1 rounded border-2 border-[#b37a1f]">
+          <div class="w-6 h-6 flex items-center justify-center">
+            <!-- White Bomber Head Mini Icon -->
+            <svg viewBox="0 0 16 16" class="w-5 h-5 drop-shadow">
+              <rect x="3" y="2" width="10" height="9" fill="#f8fafc" rx="2" />
+              <rect x="5" y="4" width="6" height="4" fill="#3b82f6" />
+              <rect x="7" y="0" width="2" height="3" fill="#ef4444" />
+              <circle cx="8" cy="1" r="1.5" fill="#f43f5e" />
+            </svg>
+          </div>
+          <span id="score-p1" class="text-sm sm:text-base text-yellow-300 font-bold tracking-wider">0</span>
+        </div>
+
+        <!-- P2: Black Bomber Score -->
+        <div class="flex items-center gap-1.5 bg-[#1b140d] px-2 py-1 rounded border-2 border-[#b37a1f]">
+          <div class="w-6 h-6 flex items-center justify-center">
+            <svg viewBox="0 0 16 16" class="w-5 h-5 drop-shadow">
+              <rect x="3" y="2" width="10" height="9" fill="#1f2937" rx="2" />
+              <rect x="5" y="4" width="6" height="4" fill="#eab308" />
+              <rect x="7" y="0" width="2" height="3" fill="#ef4444" />
+              <circle cx="8" cy="1" r="1.5" fill="#f43f5e" />
+            </svg>
+          </div>
+          <span id="score-p2" class="text-sm sm:text-base text-yellow-300 font-bold tracking-wider">0</span>
+        </div>
+
+        <!-- Round Timer Clock -->
+        <div class="bg-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-md border-2 border-yellow-500 shadow-inner">
+          <span id="timer-display" class="text-base sm:text-xl text-yellow-400 font-bold tracking-widest drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]">01:30</span>
+        </div>
+
+        <!-- P3: Red Bomber Score -->
+        <div class="flex items-center gap-1.5 bg-[#1b140d] px-2 py-1 rounded border-2 border-[#b37a1f]">
+          <div class="w-6 h-6 flex items-center justify-center">
+            <svg viewBox="0 0 16 16" class="w-5 h-5 drop-shadow">
+              <rect x="3" y="2" width="10" height="9" fill="#dc2626" rx="2" />
+              <rect x="5" y="4" width="6" height="4" fill="#fbbf24" />
+              <rect x="7" y="0" width="2" height="3" fill="#22c55e" />
+              <circle cx="8" cy="1" r="1.5" fill="#22c55e" />
+            </svg>
+          </div>
+          <span id="score-p3" class="text-sm sm:text-base text-yellow-300 font-bold tracking-wider">0</span>
+        </div>
+
+        <!-- P4: Blue Bomber Score -->
+        <div class="flex items-center gap-1.5 bg-[#1b140d] px-2 py-1 rounded border-2 border-[#b37a1f]">
+          <div class="w-6 h-6 flex items-center justify-center">
+            <svg viewBox="0 0 16 16" class="w-5 h-5 drop-shadow">
+              <rect x="3" y="2" width="10" height="9" fill="#2563eb" rx="2" />
+              <rect x="5" y="4" width="6" height="4" fill="#60a5fa" />
+              <rect x="7" y="0" width="2" height="3" fill="#ef4444" />
+              <circle cx="8" cy="1" r="1.5" fill="#f43f5e" />
+            </svg>
+          </div>
+          <span id="score-p4" class="text-sm sm:text-base text-yellow-300 font-bold tracking-wider">0</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Arcade Canvas Viewport -->
+    <div class="relative arcade-frame w-full max-w-[650px] aspect-[13/11] bg-black rounded-b-xl border-4 border-[#2b2b2b] overflow-hidden shadow-2xl flex items-center justify-center">
+      <canvas id="gameCanvas" width="624" height="528" class="w-full h-full block bg-[#18532c]"></canvas>
+
+      <!-- Overlay / Announcer / Pause Modal -->
+      <div id="modal-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-center p-6 hidden">
+        <h2 id="modal-title" class="text-2xl sm:text-3xl text-yellow-400 mb-4 tracking-wider leading-relaxed drop-shadow-[0_4px_10px_rgba(234,179,8,0.5)]">¡VICTORIA!</h2>
+        <p id="modal-subtitle" class="text-xs sm:text-sm text-gray-200 mb-6 leading-6">¡Has eliminado a todos los rivales!</p>
+        
+        <div class="flex gap-4">
+          <button id="btn-next-round" class="retro-btn px-5 py-3 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black text-xs sm:text-sm rounded-lg border-2 border-yellow-200 uppercase tracking-widest cursor-pointer">
+            SIGUIENTE RONDA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Power-Ups & Stats Legend Bar -->
+    <div class="w-full max-w-[650px] mt-2 flex flex-wrap items-center justify-between text-[9px] sm:text-[10px] text-gray-300 bg-gray-900/90 border border-gray-800 px-3 py-2 rounded-lg gap-2">
+      <div class="flex items-center gap-1.5" title="Bombas Simultáneas">
+        <span class="text-base">💣</span> <span id="stat-bombs" class="text-yellow-400 font-bold">1</span>
+      </div>
+      <div class="flex items-center gap-1.5" title="Rango de Fuego">
+        <span class="text-base">🔥</span> <span id="stat-range" class="text-red-400 font-bold">1</span>
+      </div>
+      <div class="flex items-center gap-1.5" title="Velocidad de Movimiento">
+        <span class="text-base">⛸️</span> <span id="stat-speed" class="text-blue-400 font-bold">Normal</span>
+      </div>
+      <div class="flex items-center gap-1.5" title="Habilidad de Patear/Empujar Bombas">
+        <span class="text-base">🥊</span> <span id="stat-glove" class="text-purple-400 font-bold">No</span>
+      </div>
+      
+      <!-- Utility Buttons (Mute, Restart) -->
+      <div class="flex items-center gap-2 ml-auto">
+        <button id="btn-sound" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-yellow-400 rounded border border-gray-600 text-[10px] cursor-pointer">
+          🔊 SONIDO
+        </button>
+        <button id="btn-restart" class="px-2 py-1 bg-red-800/80 hover:bg-red-700 text-white rounded border border-red-600 text-[10px] cursor-pointer">
+          🔄 REINICIAR
+        </button>
+      </div>
+    </div>
+
+    <!-- Virtual Controller for Mobile Devices & On-Screen Play -->
+    <div class="w-full max-w-[650px] mt-3 grid grid-cols-2 gap-4 select-none pb-2">
+      <!-- D-Pad -->
+      <div class="flex items-center justify-center">
+        <div class="grid grid-cols-3 gap-1 w-36 h-36">
+          <div></div>
+          <button id="ctrl-up" class="d-btn bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg flex items-center justify-center text-xl font-bold cursor-pointer border-t border-slate-500">▲</button>
+          <div></div>
+
+          <button id="ctrl-left" class="d-btn bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg flex items-center justify-center text-xl font-bold cursor-pointer border-t border-slate-500">◀</button>
+          <div class="bg-slate-800/80 rounded-lg border border-slate-700 flex items-center justify-center">
+            <div class="w-3 h-3 rounded-full bg-slate-600"></div>
+          </div>
+          <button id="ctrl-right" class="d-btn bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg flex items-center justify-center text-xl font-bold cursor-pointer border-t border-slate-500">▶</button>
+
+          <div></div>
+          <button id="ctrl-down" class="d-btn bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg flex items-center justify-center text-xl font-bold cursor-pointer border-t border-slate-500">▼</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Action Button (BOMB) -->
+      <div class="flex flex-col items-center justify-center">
+        <button id="ctrl-bomb" class="d-btn w-28 h-28 bg-gradient-to-tr from-red-700 via-red-600 to-rose-500 hover:from-red-600 hover:to-rose-400 text-white font-black text-sm rounded-full flex flex-col items-center justify-center gap-1 border-4 border-red-400/50 cursor-pointer shadow-lg active:scale-95 transition-transform">
+          <span class="text-2xl drop-shadow">💣</span>
+          <span class="tracking-wider text-[11px] font-bold">BOMBA</span>
+        </button>
+        <span class="text-[9px] text-gray-500 mt-2 font-mono hidden sm:inline-block">Teclado: Flechas / WASD + ESPACIO</span>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="text-center text-[9px] text-gray-500 mt-2">
+    Inspirado en Super Bomberman (SNES) • Batalla Clásica de 4 Jugadores
+  </footer>
+
+  <!-- Complete Game Script -->
+  <script>
+    /**
+     * SUPER BOMBERMAN CLASSIC - SINGLE FILE RECREATION
+     * Features:
+     * - Authentic 13 x 11 grid arena
+     * - Destructible brick blocks with procedural drop rates
+     * - 4 Players (Player 1 + 3 Smart AI Opponents with danger avoidance)
+     * - Dynamic Cross-shaped fire blast chain explosions
+     * - Power-ups: Extra Bombs, Fire Range, Roller Skate (Speed), Glove (Kick bombs), Skull
+     * - Retro Sound Synthesizer via Web Audio API
+     * - Touch D-pad & Full Keyboard support
+     */
+
+    // --- SOUND SYSTEM (Web Audio API) ---
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type, duration, startVol = 0.2, endVol = 0.01) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          
+          gain.gain.setValueAtTime(startVol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(endVol, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          // Ignore audio errors gracefully
+        }
+      }
+
+      bombPlant() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.12);
+
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.12);
+        } catch (e) {}
+      }
+
+      explode() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          // White noise buffer for explosion rumble
+          const bufferSize = this.ctx.sampleRate * 0.45;
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+          filter.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.4);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.45);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          noise.start();
+          noise.stop(this.ctx.currentTime + 0.45);
+        } catch (e) {}
+      }
+
+      powerUp() {
+        if (this.muted) return;
+        const notes = [330, 440, 660, 880];
+        notes.forEach((freq, i) => {
+          setTimeout(() => {
+            this.playTone(freq, 'square', 0.08, 0.15, 0.01);
+          }, i * 55);
+        });
+      }
+
+      kick() {
+        this.playTone(220, 'square', 0.08, 0.25, 0.01);
+      }
+
+      death() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.5);
+
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.5);
+        } catch (e) {}
+      }
+
+      victory() {
+        const fanfare = [
+          { f: 523, d: 120 }, { f: 659, d: 120 }, { f: 783, d: 120 },
+          { f: 1046, d: 300 }
+        ];
+        let delay = 0;
+        fanfare.forEach(item => {
+          setTimeout(() => {
+            this.playTone(item.f, 'square', item.d / 1000, 0.2, 0.02);
+          }, delay);
+          delay += item.d + 30;
+        });
+      }
+    }
+
+    const sound = new SoundFX();
+
+    // --- GAME CONSTANTS & CONFIGURATION ---
+    const COLS = 13;
+    const ROWS = 11;
+    const TILE_SIZE = 48; // Canvas width = 13 * 48 = 624, height = 11 * 48 = 528
+
+    const CELL = {
+      EMPTY: 0,
+      SOLID_WALL: 1,
+      BRICK: 2
+    };
+
+    const POWERUP_TYPES = {
+      BOMB_UP: 'bomb_up',
+      FIRE_UP: 'fire_up',
+      SPEED_UP: 'speed_up',
+      GLOVE: 'glove',
+      SKULL: 'skull'
+    };
+
+    // Color theme definitions matching SNES screenshot
+    const PLAYER_CONFIG = [
+      { id: 0, name: 'Blanco', color: '#f8fafc', visor: '#3b82f6', antenna: '#f43f5e', scoreId: 'score-p1', isAI: false },
+      { id: 1, name: 'Negro',  color: '#1f2937', visor: '#eab308', antenna: '#f43f5e', scoreId: 'score-p2', isAI: true },
+      { id: 2, name: 'Rojo',   color: '#dc2626', visor: '#fbbf24', antenna: '#22c55e', scoreId: 'score-p3', isAI: true },
+      { id: 3, name: 'Azul',   color: '#2563eb', visor: '#93c5fd', antenna: '#f43f5e', scoreId: 'score-p4', isAI: true }
+    ];
+
+    // Starting positions in 13x11 grid (col, row)
+    const SPAWN_TILES = [
+      { c: 1, r: 1 },   // P1 Top-Left
+      { c: 11, r: 9 },  // P2 Bottom-Right
+      { c: 11, r: 1 },  // P3 Top-Right
+      { c: 1, r: 9 }    // P4 Bottom-Left
+    ];
+
+    // --- GAME ENGINE STATE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let grid = [];
+    let players = [];
+    let bombs = [];
+    let explosions = [];
+    let powerUps = [];
+    let roundTimer = 90; // 1:30
+    let timerInterval = null;
+    let scores = [0, 0, 0, 0];
+    let gameState = 'PLAYING'; // 'PLAYING', 'ROUND_OVER', 'PAUSED'
+    let lastTime = performance.now();
+    let tickCount = 0;
+
+    // Inputs
+    const keys = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      bomb: false
+    };
+
+    // --- MAP INITIALIZATION ---
+    function initMap() {
+      grid = [];
+      for (let r = 0; r < ROWS; r++) {
+        grid[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          // Perimeter borders
+          if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) {
+            grid[r][c] = CELL.SOLID_WALL;
+          }
+          // Internal alternating solid pillars
+          else if (r % 2 === 0 && c % 2 === 0) {
+            grid[r][c] = CELL.SOLID_WALL;
+          }
+          else {
+            grid[r][c] = CELL.EMPTY;
+          }
+        }
+      }
+
+      // Safe spots around spawns to prevent trap at round start
+      const safeTiles = [
+        // P1 Top-Left
+        '1,1', '2,1', '1,2',
+        // P2 Bottom-Right
+        '11,9', '10,9', '11,8',
+        // P3 Top-Right
+        '11,1', '10,1', '11,2',
+        // P4 Bottom-Left
+        '1,9', '2,9', '1,8'
+      ];
+
+      // Fill remaining spots with destructible brick blocks (~72% density)
+      for (let r = 1; r < ROWS - 1; r++) {
+        for (let c = 1; c < COLS - 1; c++) {
+          const key = `${c},${r}`;
+          if (grid[r][c] === CELL.EMPTY && !safeTiles.includes(key)) {
+            if (Math.random() < 0.72) {
+              grid[r][c] = CELL.BRICK;
+            }
+          }
+        }
+      }
+    }
+
+    // --- PLAYER CLASS ---
+    class Player {
+      constructor(cfg, spawn) {
+        this.id = cfg.id;
+        this.name = cfg.name;
+        this.color = cfg.color;
+        this.visor = cfg.visor;
+        this.antenna = cfg.antenna;
+        this.isAI = cfg.isAI;
+
+        // Position & Movement
+        this.x = spawn.c * TILE_SIZE + TILE_SIZE / 2;
+        this.y = spawn.r * TILE_SIZE + TILE_SIZE / 2;
+        this.radius = 16;
+        this.baseSpeed = 2.4;
+        this.speed = this.baseSpeed;
+        this.vx = 0;
+        this.vy = 0;
+        this.direction = 'down'; // 'up', 'down', 'left', 'right'
+        this.walkFrame = 0;
+
+        // Attributes & Inventory
+        this.alive = true;
+        this.maxBombs = 1;
+        this.bombRange = 1;
+        this.hasGlove = false;
+        this.skullTimer = 0;
+        this.invincibleTimer = 0;
+
+        // AI variables
+        this.aiDecisionTimer = 0;
+        this.aiTargetTile = null;
+        this.aiMoveDirection = null;
+      }
+
+      update(dt) {
+        if (!this.alive) return;
+
+        if (this.skullTimer > 0) {
+          this.skullTimer -= dt;
+          if (this.skullTimer <= 0) {
+            this.speed = this.baseSpeed;
+          }
+        }
+
+        // Handle Input or AI behavior
+        if (this.isAI) {
+          this.updateAI(dt);
+        } else {
+          this.handlePlayerInput();
+        }
+
+        // Apply movement with smooth collision & corner sliding
+        this.move(this.vx, this.vy);
+
+        // Animation frame
+        if (this.vx !== 0 || this.vy !== 0) {
+          this.walkFrame += 0.2;
+        }
+
+        // Check power-up collection
+        const col = Math.floor(this.x / TILE_SIZE);
+        const row = Math.floor(this.y / TILE_SIZE);
+        const pUpIndex = powerUps.findIndex(p => p.c === col && p.r === row);
+        if (pUpIndex !== -1) {
+          this.applyPowerUp(powerUps[pUpIndex].type);
+          powerUps.splice(pUpIndex, 1);
+          sound.powerUp();
+        }
+      }
+
+      handlePlayerInput() {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.up) dy -= 1;
+        if (keys.down) dy += 1;
+        if (keys.left) dx -= 1;
+        if (keys.right) dx += 1;
+
+        // Invert controls if cursed with skull
+        if (this.isCursed) {
+          dx = -dx;
+          dy = -dy;
+        }
+
+        // Prioritize cardinal direction or normalize
+        if (dx !== 0 && dy !== 0) {
+          // Normalize diagonal
+          dx *= 0.7071;
+          dy *= 0.7071;
+        }
+
+        this.vx = dx * this.speed;
+        this.vy = dy * this.speed;
+
+        if (dy < -0.1) this.direction = 'up';
+        else if (dy > 0.1) this.direction = 'down';
+        else if (dx < -0.1) this.direction = 'left';
+        else if (dx > 0.1) this.direction = 'right';
+
+        if (keys.bomb) {
+          this.plantBomb();
+          keys.bomb = false; // consume trigger
+        }
+      }
+
+      move(vx, vy) {
+        if (vx === 0 && vy === 0) return;
+
+        let newX = this.x + vx;
+        let newY = this.y + vy;
+
+        // Check horizontal movement
+        if (vx !== 0) {
+          if (!this.checkWallCollision(newX, this.y)) {
+            this.x = newX;
+          } else {
+            // Corner slide horizontally if close to center
+            const currentR = Math.floor(this.y / TILE_SIZE);
+            const centerTileY = currentR * TILE_SIZE + TILE_SIZE / 2;
+            const diffY = this.y - centerTileY;
+            if (Math.abs(diffY) > 2 && Math.abs(diffY) < 14) {
+              this.y += (diffY > 0 ? -1 : 1) * 1.5;
+            }
+          }
+        }
+
+        // Check vertical movement
+        if (vy !== 0) {
+          if (!this.checkWallCollision(this.x, newY)) {
+            this.y = newY;
+          } else {
+            // Corner slide vertically if close to center
+            const currentC = Math.floor(this.x / TILE_SIZE);
+            const centerTileX = currentC * TILE_SIZE + TILE_SIZE / 2;
+            const diffX = this.x - centerTileX;
+            if (Math.abs(diffX) > 2 && Math.abs(diffX) < 14) {
+              this.x += (diffX > 0 ? -1 : 1) * 1.5;
+            }
+          }
+        }
+
+        // Check Bomb Kick / Interaction
+        if (this.hasGlove) {
+          const col = Math.floor((this.x + vx * 6) / TILE_SIZE);
+          const row = Math.floor((this.y + vy * 6) / TILE_SIZE);
+          const bombAtTile = bombs.find(b => b.c === col && b.r === row && !b.isMoving);
+          if (bombAtTile) {
+            let kickDir = { c: 0, r: 0 };
+            if (this.direction === 'up') kickDir.r = -1;
+            if (this.direction === 'down') kickDir.r = 1;
+            if (this.direction === 'left') kickDir.c = -1;
+            if (this.direction === 'right') kickDir.c = 1;
+            bombAtTile.kick(kickDir);
+            sound.kick();
+          }
+        }
+      }
+
+      checkWallCollision(testX, testY) {
+        const padding = 12; // Collision box margin
+        const left = Math.floor((testX - padding) / TILE_SIZE);
+        const right = Math.floor((testX + padding) / TILE_SIZE);
+        const top = Math.floor((testY - padding) / TILE_SIZE);
+        const bottom = Math.floor((testY + padding) / TILE_SIZE);
+
+        for (let r = top; r <= bottom; r++) {
+          for (let c = left; c <= right; c++) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
+            if (grid[r][c] === CELL.SOLID_WALL || grid[r][c] === CELL.BRICK) {
+              return true;
+            }
+            // Check active bombs as solid blocks, except if player is inside the bomb bounds
+            const bomb = bombs.find(b => b.c === c && b.r === r);
+            if (bomb) {
+              // If player just placed this bomb and is still intersecting it, allow walking off
+              const currentTileC = Math.floor(this.x / TILE_SIZE);
+              const currentTileR = Math.floor(this.y / TILE_SIZE);
+              if (currentTileC !== c || currentTileR !== r) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      plantBomb() {
+        if (!this.alive) return;
+        const col = Math.floor(this.x / TILE_SIZE);
+        const row = Math.floor(this.y / TILE_SIZE);
+
+        // Count how many bombs this player currently has on the field
+        const activePlayerBombs = bombs.filter(b => b.ownerId === this.id).length;
+        if (activePlayerBombs >= this.maxBombs) return;
+
+        // Check if bomb already exists at this tile
+        if (bombs.some(b => b.c === col && b.r === row)) return;
+
+        bombs.push(new Bomb(col, row, this.bombRange, this.id));
+        sound.bombPlant();
+      }
+
+      applyPowerUp(type) {
+        switch (type) {
+          case POWERUP_TYPES.BOMB_UP:
+            this.maxBombs = Math.min(this.maxBombs + 1, 6);
+            break;
+          case POWERUP_TYPES.FIRE_UP:
+            this.bombRange = Math.min(this.bombRange + 1, 8);
+            break;
+          case POWERUP_TYPES.SPEED_UP:
+            this.baseSpeed = Math.min(this.baseSpeed + 0.5, 4.2);
+            this.speed = this.baseSpeed;
+            break;
+          case POWERUP_TYPES.GLOVE:
+            this.hasGlove = true;
+            break;
+          case POWERUP_TYPES.SKULL:
+            this.skullTimer = 7.0; // 7 seconds curse
+            const effects = ['fast', 'slow', 'invert'];
+            const effect = effects[Math.floor(Math.random() * effects.length)];
+            if (effect === 'fast') this.speed = 5.0;
+            else if (effect === 'slow') this.speed = 1.2;
+            else this.isCursed = true;
+            break;
+        }
+        updateHudStats();
+      }
+
+      die() {
+        if (!this.alive) return;
+        this.alive = false;
+        sound.death();
+        checkRoundOver();
+      }
+
+      // --- SMART AI BOT BEHAVIOR ---
+      updateAI(dt) {
+        this.aiDecisionTimer -= dt;
+
+        const currentC = Math.floor(this.x / TILE_SIZE);
+        const currentR = Math.floor(this.y / TILE_SIZE);
+
+        // 1. Calculate danger zone from active bombs and blast footprints
+        const dangerTiles = getDangerTiles();
+        const isInDanger = dangerTiles.has(`${currentC},${currentR}`);
+
+        // Re-evaluate strategy periodically or immediately upon danger
+        if (this.aiDecisionTimer <= 0 || (isInDanger && !this.fleeing)) {
+          this.aiDecisionTimer = 0.25 + Math.random() * 0.15;
+
+          if (isInDanger) {
+            // Find nearest safe tile
+            this.fleeing = true;
+            const escapeTile = findSafeTile(currentC, currentR, dangerTiles);
+            if (escapeTile) {
+              this.aiMoveDirection = getDirectionToward(currentC, currentR, escapeTile.c, escapeTile.r);
+            } else {
+              // Move randomly to unblock
+              this.aiMoveDirection = getRandomSafeDirection(currentC, currentR);
+            }
+          } else {
+            this.fleeing = false;
+            // Bot is safe. Strategy:
+            // Check adjacent bricks or enemies
+            const adjacentBricks = getAdjacentBricks(currentC, currentR);
+            const shouldBomb = adjacentBricks.length > 0 && Math.random() < 0.65;
+
+            // Ensure bomb has an escape path BEFORE planting!
+            if (shouldBomb && canEscapeAfterBomb(currentC, currentR, this.bombRange)) {
+              this.plantBomb();
+              // Immediately find escape route
+              const newDanger = getDangerTiles();
+              const escapeTile = findSafeTile(currentC, currentR, newDanger);
+              if (escapeTile) {
+                this.aiMoveDirection = getDirectionToward(currentC, currentR, escapeTile.c, escapeTile.r);
+              }
+            } else {
+              // Seek powerups, bricks, or enemies
+              const target = findDesirableTarget(currentC, currentR, dangerTiles);
+              if (target) {
+                this.aiMoveDirection = getDirectionToward(currentC, currentR, target.c, target.r);
+              } else {
+                if (!this.aiMoveDirection || Math.random() < 0.2) {
+                  this.aiMoveDirection = getRandomSafeDirection(currentC, currentR);
+                }
+              }
+            }
+          }
+        }
+
+        // Apply movement vector
+        this.vx = 0;
+        this.vy = 0;
+        if (this.aiMoveDirection) {
+          this.vx = this.aiMoveDirection.x * this.speed * 0.9;
+          this.vy = this.aiMoveDirection.y * this.speed * 0.9;
+
+          if (this.vy < -0.1) this.direction = 'up';
+          else if (this.vy > 0.1) this.direction = 'down';
+          else if (this.vx < -0.1) this.direction = 'left';
+          else if (this.vx > 0.1) this.direction = 'right';
+        }
+      }
+
+      draw() {
+        if (!this.alive) return;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Shadow under player
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, 14, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bobbing walk effect
+        const bob = Math.sin(this.walkFrame) * 2;
+
+        // Body / Torso
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.roundRect(-10, -8 + bob, 20, 18, 5);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        // Belt / Details
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-8, 5 + bob, 16, 3);
+
+        // Head / Helmet (large characteristic Bomberman oval)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(-12, -22 + bob, 24, 18, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        // Visor / Face
+        ctx.fillStyle = this.visor;
+        ctx.beginPath();
+        ctx.roundRect(-8, -19 + bob, 16, 11, 4);
+        ctx.fill();
+
+        // Visor eyes / highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-5, -17 + bob, 2, 4);
+        ctx.fillRect(3, -17 + bob, 2, 4);
+
+        // Antenna pole
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-1.5, -26 + bob, 3, 5);
+
+        // Antenna Orb
+        ctx.fillStyle = this.antenna;
+        ctx.beginPath();
+        ctx.arc(0, -27 + bob, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Feet animation
+        ctx.fillStyle = '#f43f5e';
+        const legOffset = Math.sin(this.walkFrame) * 4;
+        ctx.beginPath();
+        ctx.ellipse(-6, 12 - (this.vx !== 0 || this.vy !== 0 ? legOffset : 0), 4, 3, 0, 0, Math.PI * 2);
+        ctx.ellipse(6, 12 + (this.vx !== 0 || this.vy !== 0 ? legOffset : 0), 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Skull curse halo
+        if (this.skullTimer > 0) {
+          ctx.fillStyle = '#a855f7';
+          ctx.font = '10px monospace';
+          ctx.fillText('💀', -6, -33 + bob);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- BOMB CLASS ---
+    class Bomb {
+      constructor(c, r, range, ownerId) {
+        this.c = c;
+        this.r = r;
+        this.range = range;
+        this.ownerId = ownerId;
+        this.timer = 2.6; // ~2.6 seconds fuse
+        this.pulse = 0;
+        this.isMoving = false;
+        this.slideDir = { c: 0, r: 0 };
+        this.x = c * TILE_SIZE + TILE_SIZE / 2;
+        this.y = r * TILE_SIZE + TILE_SIZE / 2;
+      }
+
+      update(dt) {
+        this.timer -= dt;
+        this.pulse += dt * 8;
+
+        // Sliding kick motion
+        if (this.isMoving) {
+          const moveSpeed = 8;
+          const targetX = (this.c + this.slideDir.c) * TILE_SIZE + TILE_SIZE / 2;
+          const targetY = (this.r + this.slideDir.r) * TILE_SIZE + TILE_SIZE / 2;
+
+          this.x += this.slideDir.c * moveSpeed;
+          this.y += this.slideDir.r * moveSpeed;
+
+          // Check if reached next tile
+          if (Math.hypot(this.x - targetX, this.y - targetY) < moveSpeed) {
+            this.c += this.slideDir.c;
+            this.r += this.slideDir.r;
+            this.x = this.c * TILE_SIZE + TILE_SIZE / 2;
+            this.y = this.r * TILE_SIZE + TILE_SIZE / 2;
+
+            // Check if next tile is blocked
+            const nextC = this.c + this.slideDir.c;
+            const nextR = this.r + this.slideDir.r;
+            if (
+              grid[nextR][nextC] !== CELL.EMPTY ||
+              bombs.some(b => b !== this && b.c === nextC && b.r === nextR) ||
+              players.some(p => p.alive && Math.floor(p.x / TILE_SIZE) === nextC && Math.floor(p.y / TILE_SIZE) === nextR)
+            ) {
+              this.isMoving = false; // Stop sliding
+            }
+          }
+        }
+
+        if (this.timer <= 0) {
+          this.explode();
+        }
+      }
+
+      kick(dir) {
+        const nextC = this.c + dir.c;
+        const nextR = this.r + dir.r;
+        if (grid[nextR][nextC] === CELL.EMPTY && !bombs.some(b => b.c === nextC && b.r === nextR)) {
+          this.isMoving = true;
+          this.slideDir = dir;
+        }
+      }
+
+      explode() {
+        const idx = bombs.indexOf(this);
+        if (idx !== -1) {
+          bombs.splice(idx, 1);
+        }
+        createExplosion(this.c, this.r, this.range);
+        sound.explode();
+      }
+
+      draw() {
+        ctx.save();
+        const px = this.isMoving ? this.x : this.c * TILE_SIZE + TILE_SIZE / 2;
+        const py = this.isMoving ? this.y : this.r * TILE_SIZE + TILE_SIZE / 2;
+        ctx.translate(px, py);
+
+        // Breathing / Pulsing animation
+        const scale = 1 + Math.sin(this.pulse) * 0.08;
+        ctx.scale(scale, scale);
+
+        // Bomb Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 14, 13, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bomb Body (Spherical metallic black)
+        const radGrad = ctx.createRadialGradient(-4, -4, 2, 0, 0, 16);
+        radGrad.addColorStop(0, '#64748b');
+        radGrad.addColorStop(0.3, '#1e293b');
+        radGrad.addColorStop(1, '#020617');
+
+        ctx.fillStyle = radGrad;
+        ctx.beginPath();
+        ctx.arc(0, 2, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        // Bomb Neck
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-3, -14, 6, 4);
+
+        // Animated Fuse Wick & Burning Spark
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.quadraticCurveTo(4, -18, 2, -21);
+        ctx.stroke();
+
+        // Spark explosion
+        ctx.fillStyle = Math.random() < 0.5 ? '#f59e0b' : '#ef4444';
+        ctx.beginPath();
+        ctx.arc(2, -21, 3 + Math.random() * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    // --- EXPLOSIONS & PARTICLES ---
+    class ExplosionPiece {
+      constructor(c, r, isCenter = false, isEnd = false, dir = 'none') {
+        this.c = c;
+        this.r = r;
+        this.isCenter = isCenter;
+        this.isEnd = isEnd;
+        this.dir = dir;
+        this.timer = 0.5; // Duration of fire in seconds
+        this.frame = 0;
+      }
+
+      update(dt) {
+        this.timer -= dt;
+        this.frame += dt * 18;
+      }
+
+      draw() {
+        ctx.save();
+        const px = this.c * TILE_SIZE + TILE_SIZE / 2;
+        const py = this.r * TILE_SIZE + TILE_SIZE / 2;
+        ctx.translate(px, py);
+
+        const flicker = Math.sin(this.frame) * 3;
+        const size = (TILE_SIZE / 2) + flicker;
+
+        // Outer Fire Glow
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(0, 0, size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner Yellow Core
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White hot center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    function createExplosion(centerC, centerR, range) {
+      const pieces = [];
+      pieces.push(new ExplosionPiece(centerC, centerR, true));
+
+      const directions = [
+        { c: 0, r: -1, name: 'up' },
+        { c: 0, r: 1, name: 'down' },
+        { c: -1, r: 0, name: 'left' },
+        { c: 1, r: 0, name: 'right' }
+      ];
+
+      for (const d of directions) {
+        for (let step = 1; step <= range; step++) {
+          const targetC = centerC + d.c * step;
+          const targetR = centerR + d.r * step;
+
+          if (targetR < 0 || targetR >= ROWS || targetC < 0 || targetC >= COLS) break;
+
+          const cell = grid[targetR][targetC];
+
+          // Hit indestructible wall: stops fire immediately
+          if (cell === CELL.SOLID_WALL) {
+            break;
+          }
+
+          // Hit destructible brick: breaks brick, drops powerup, stops ray
+          if (cell === CELL.BRICK) {
+            grid[targetR][targetC] = CELL.EMPTY;
+            pieces.push(new ExplosionPiece(targetC, targetR, false, true, d.name));
+            maybeSpawnPowerUp(targetC, targetR);
+            break;
+          }
+
+          // Empty cell: fire continues
+          const isEnd = (step === range);
+          pieces.push(new ExplosionPiece(targetC, targetR, false, isEnd, d.name));
+
+          // Check if fire hits an existing bomb -> Chain reaction!
+          const chainedBomb = bombs.find(b => b.c === targetC && b.r === targetR);
+          if (chainedBomb) {
+            chainedBomb.timer = 0; // Trigger instantly next tick
+          }
+        }
+      }
+
+      explosions.push(...pieces);
+    }
+
+    // --- POWER-UP SYSTEM ---
+    function maybeSpawnPowerUp(c, r) {
+      const dropChance = 0.40; // 40% chance from broken bricks
+      if (Math.random() > dropChance) return;
+
+      const roll = Math.random();
+      let type = POWERUP_TYPES.BOMB_UP;
+      if (roll < 0.32) type = POWERUP_TYPES.BOMB_UP;
+      else if (roll < 0.62) type = POWERUP_TYPES.FIRE_UP;
+      else if (roll < 0.82) type = POWERUP_TYPES.SPEED_UP;
+      else if (roll < 0.93) type = POWERUP_TYPES.GLOVE;
+      else type = POWERUP_TYPES.SKULL;
+
+      powerUps.push({ c, r, type, pulse: Math.random() * Math.PI });
+    }
+
+    function drawPowerUps() {
+      powerUps.forEach(p => {
+        p.pulse += 0.05;
+        const x = p.c * TILE_SIZE + 4;
+        const y = p.r * TILE_SIZE + 4;
+        const w = TILE_SIZE - 8;
+        const h = TILE_SIZE - 8;
+
+        ctx.save();
+        // Matching the screenshot's iconic blue-framed powerup tiles
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(x, y, w, h);
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.strokeRect(x, y, w, h);
+
+        // Inner dark icon plate
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+
+        // Icon Graphic
+        ctx.font = '16px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        let emoji = '💣';
+        if (p.type === POWERUP_TYPES.FIRE_UP) emoji = '🔥';
+        if (p.type === POWERUP_TYPES.SPEED_UP) emoji = '⛸️';
+        if (p.type === POWERUP_TYPES.GLOVE) emoji = '🥊';
+        if (p.type === POWERUP_TYPES.SKULL) emoji = '💀';
+
+        ctx.fillText(emoji, x + w / 2, y + h / 2 + 1);
+        ctx.restore();
+      });
+    }
+
+    // --- MAP DRAWING (BRICKS, WALLS, GRASS) ---
+    function drawMap() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const x = c * TILE_SIZE;
+          const y = r * TILE_SIZE;
+          const cell = grid[r][c];
+
+          // 1. Grass Ground (Classic Green Grid)
+          const isEven = (r + c) % 2 === 0;
+          ctx.fillStyle = isEven ? '#18532c' : '#144625';
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+          // Subtle grass blade details
+          ctx.fillStyle = '#1c6234';
+          ctx.fillRect(x + 8, y + 12, 3, 4);
+          ctx.fillRect(x + 28, y + 32, 4, 3);
+
+          // 2. Solid Indestructible Wall Pillars (Metallic / Beveled Stone)
+          if (cell === CELL.SOLID_WALL) {
+            // Beveled base
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+            // Top highlight
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(x, y, TILE_SIZE, 4);
+            ctx.fillRect(x, y, 4, TILE_SIZE);
+
+            // Bottom-right shadow
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(x, y + TILE_SIZE - 4, TILE_SIZE, 4);
+            ctx.fillRect(x + TILE_SIZE - 4, y, 4, TILE_SIZE);
+
+            // Inner carved rectangle
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1e293b';
+            ctx.strokeRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+          }
+
+          // 3. Destructible Brick Blocks (Grey Mortar Bricks from Screenshot)
+          else if (cell === CELL.BRICK) {
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+            // Mortar brick lines
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x + 1, y + 15, TILE_SIZE - 2, 2);
+            ctx.fillRect(x + 1, y + 31, TILE_SIZE - 2, 2);
+
+            // Vertical brick offsets
+            ctx.fillRect(x + 22, y + 1, 2, 14);
+            ctx.fillRect(x + 10, y + 16, 2, 15);
+            ctx.fillRect(x + 34, y + 16, 2, 15);
+            ctx.fillRect(x + 24, y + 32, 2, 14);
+
+            // Brick highlight
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(x + 2, y + 2, 18, 2);
+            ctx.fillRect(x + 26, y + 2, 18, 2);
+          }
+        }
+      }
+    }
+
+    // --- AI UTILITY HELPERS ---
+    function getDangerTiles() {
+      const danger = new Set();
+      for (const bomb of bombs) {
+        danger.add(`${bomb.c},${bomb.r}`);
+        const directions = [
+          { c: 0, r: -1 }, { c: 0, r: 1 },
+          { c: -1, r: 0 }, { c: 1, r: 0 }
+        ];
+        for (const d of directions) {
+          for (let step = 1; step <= bomb.range; step++) {
+            const tc = bomb.c + d.c * step;
+            const tr = bomb.r + d.r * step;
+            if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) break;
+            if (grid[tr][tc] === CELL.SOLID_WALL) break;
+            danger.add(`${tc},${tr}`);
+            if (grid[tr][tc] === CELL.BRICK) break;
+          }
+        }
+      }
+      return danger;
+    }
+
+    function findSafeTile(startC, startR, dangerTiles) {
+      const queue = [{ c: startC, r: startR, dist: 0 }];
+      const visited = new Set([`${startC},${startR}`]);
+
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        const key = `${cur.c},${cur.r}`;
+
+        if (!dangerTiles.has(key)) {
+          return cur; // Found nearest safe tile!
+        }
+
+        const neighbors = [
+          { c: cur.c + 1, r: cur.r },
+          { c: cur.c - 1, r: cur.r },
+          { c: cur.c, r: cur.r + 1 },
+          { c: cur.c, r: cur.r - 1 }
+        ];
+
+        for (const n of neighbors) {
+          const nKey = `${n.c},${n.r}`;
+          if (
+            n.c >= 0 && n.c < COLS && n.r >= 0 && n.r < ROWS &&
+            !visited.has(nKey) &&
+            grid[n.r][n.c] === CELL.EMPTY &&
+            !bombs.some(b => b.c === n.c && b.r === n.r)
+          ) {
+            visited.add(nKey);
+            queue.push({ c: n.c, r: n.r, dist: cur.dist + 1 });
+          }
+        }
+      }
+      return null;
+    }
+
+    function getDirectionToward(fromC, fromR, toC, toR) {
+      const dx = toC - fromC;
+      const dy = toR - fromR;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return { x: Math.sign(dx), y: 0 };
+      } else if (dy !== 0) {
+        return { x: 0, y: Math.sign(dy) };
+      }
+      return { x: 0, y: 0 };
+    }
+
+    function getRandomSafeDirection(c, r) {
+      const dirs = [
+        { x: 0, y: -1 }, { x: 0, y: 1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 }
+      ];
+      const valid = dirs.filter(d => {
+        const nc = c + d.x;
+        const nr = r + d.y;
+        return (
+          nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS &&
+          grid[nr][nc] === CELL.EMPTY &&
+          !bombs.some(b => b.c === nc && b.r === nr)
+        );
+      });
+      return valid.length > 0 ? valid[Math.floor(Math.random() * valid.length)] : null;
+    }
+
+    function getAdjacentBricks(c, r) {
+      const dirs = [{ c: 0, r: -1 }, { c: 0, r: 1 }, { c: -1, r: 0 }, { c: 1, r: 0 }];
+      return dirs.filter(d => {
+        const nc = c + d.c;
+        const nr = r + d.r;
+        return nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] === CELL.BRICK;
+      });
+    }
+
+    function canEscapeAfterBomb(c, r, range) {
+      const simulatedDanger = new Set();
+      simulatedDanger.add(`${c},${r}`);
+      const directions = [{ c: 0, r: -1 }, { c: 0, r: 1 }, { c: -1, r: 0 }, { c: 1, r: 0 }];
+      for (const d of directions) {
+        for (let s = 1; s <= range; s++) {
+          const tc = c + d.c * s;
+          const tr = r + d.r * s;
+          if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS || grid[tr][tc] !== CELL.EMPTY) break;
+          simulatedDanger.add(`${tc},${tr}`);
+        }
+      }
+      return findSafeTile(c, r, simulatedDanger) !== null;
+    }
+
+    function findDesirableTarget(c, r, dangerTiles) {
+      // 1. Look for nearby power-up
+      if (powerUps.length > 0) {
+        const safePups = powerUps.filter(p => !dangerTiles.has(`${p.c},${p.r}`));
+        if (safePups.length > 0) {
+          return safePups[0];
+        }
+      }
+      // 2. Look for brick to break
+      for (let rad = 1; rad <= 3; rad++) {
+        const checkCoords = [
+          { c: c + rad, r }, { c: c - rad, r },
+          { c, r: r + rad }, { c, r: r - rad }
+        ];
+        for (const coord of checkCoords) {
+          if (
+            coord.r >= 0 && coord.r < ROWS && coord.c >= 0 && coord.c < COLS &&
+            grid[coord.r][coord.c] === CELL.BRICK
+          ) {
+            return coord;
+          }
+        }
+      }
+      return null;
+    }
+
+    // --- ROUND & GAME MANAGEMENT ---
+    function startNewRound() {
+      initMap();
+      bombs = [];
+      explosions = [];
+      powerUps = [];
+      roundTimer = 90;
+      gameState = 'PLAYING';
+
+      // Hide modal
+      document.getElementById('modal-overlay').classList.add('hidden');
+
+      // Initialize Players
+      players = PLAYER_CONFIG.map((cfg, i) => new Player(cfg, SPAWN_TILES[i]));
+
+      updateScoreDisplay();
+      updateHudStats();
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (gameState !== 'PLAYING') return;
+        roundTimer--;
+        updateTimerDisplay();
+
+        if (roundTimer <= 0) {
+          // Sudden death / Draw
+          clearInterval(timerInterval);
+          showEndModal('¡TIEMPO AGOTADO!', 'Ronda terminada en empate.');
+        }
+      }, 1000);
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const min = Math.floor(roundTimer / 60);
+      const sec = roundTimer % 60;
+      const formatted = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+      document.getElementById('timer-display').innerText = formatted;
+    }
+
+    function updateScoreDisplay() {
+      PLAYER_CONFIG.forEach((p, idx) => {
+        document.getElementById(p.scoreId).innerText = scores[idx];
+      });
+    }
+
+    function updateHudStats() {
+      const p1 = players[0];
+      if (!p1) return;
+      document.getElementById('stat-bombs').innerText = p1.maxBombs;
+      document.getElementById('stat-range').innerText = p1.bombRange;
+      document.getElementById('stat-speed').innerText = p1.speed > 3 ? 'Rápido' : 'Normal';
+      document.getElementById('stat-glove').innerText = p1.hasGlove ? 'Sí' : 'No';
+    }
+
+    function checkRoundOver() {
+      const alivePlayers = players.filter(p => p.alive);
+
+      if (alivePlayers.length <= 1 && gameState === 'PLAYING') {
+        gameState = 'ROUND_OVER';
+        clearInterval(timerInterval);
+
+        setTimeout(() => {
+          if (alivePlayers.length === 1) {
+            const winner = alivePlayers[0];
+            scores[winner.id]++;
+            updateScoreDisplay();
+
+            if (winner.id === 0) {
+              sound.victory();
+              showEndModal('¡VICTORIA!', '¡Has eliminado a todos tus rivales!');
+            } else {
+              showEndModal('¡HAS CAÍDO!', `El ganador es Bomberman ${winner.name}`);
+            }
+          } else {
+            showEndModal('¡EMPATE!', 'Todos los bombarderos han caído.');
+          }
+        }, 600);
+      }
+    }
+
+    function showEndModal(title, subtitle) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-subtitle').innerText = subtitle;
+      document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    // --- MAIN GAME LOOP ---
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      tickCount++;
+
+      if (gameState === 'PLAYING') {
+        // 1. Update Bombs
+        for (let i = bombs.length - 1; i >= 0; i--) {
+          bombs[i].update(dt);
+        }
+
+        // 2. Update Explosions & check lethality
+        for (let i = explosions.length - 1; i >= 0; i--) {
+          const exp = explosions[i];
+          exp.update(dt);
+
+          // Check hit on players
+          for (const player of players) {
+            if (player.alive) {
+              const pCol = Math.floor(player.x / TILE_SIZE);
+              const pRow = Math.floor(player.y / TILE_SIZE);
+              if (pCol === exp.c && pRow === exp.r) {
+                player.die();
+              }
+            }
+          }
+
+          // Check hit on powerups
+          for (let pIdx = powerUps.length - 1; pIdx >= 0; pIdx--) {
+            if (powerUps[pIdx].c === exp.c && powerUps[pIdx].r === exp.r) {
+              powerUps.splice(pIdx, 1);
+            }
+          }
+
+          if (exp.timer <= 0) {
+            explosions.splice(i, 1);
+          }
+        }
+
+        // 3. Update Players
+        players.forEach(p => p.update(dt));
+      }
+
+      // --- RENDER PASS ---
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawMap();
+      drawPowerUps();
+      bombs.forEach(b => b.draw());
+      players.forEach(p => p.draw());
+      explosions.forEach(e => e.draw());
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- CONTROLS & EVENT LISTENERS ---
+    window.addEventListener('keydown', (e) => {
+      sound.init(); // Activate AudioContext on first keystroke
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          keys.up = true;
+          e.preventDefault();
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          keys.down = true;
+          e.preventDefault();
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          keys.left = true;
+          e.preventDefault();
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          keys.right = true;
+          e.preventDefault();
+          break;
+        case 'Space':
+        case 'KeyJ':
+        case 'Enter':
+          keys.bomb = true;
+          e.preventDefault();
+          break;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          keys.up = false;
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          keys.down = false;
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          keys.left = false;
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          keys.right = false;
+          break;
+        case 'Space':
+        case 'KeyJ':
+        case 'Enter':
+          keys.bomb = false;
+          break;
+      }
+    });
+
+    // Touch D-Pad Binding with Multi-Touch Support
+    function bindTouchBtn(btnId, keyName) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+
+      const setKey = (val) => {
+        keys[keyName] = val;
+        sound.init();
+        if (val) btn.classList.add('active');
+        else btn.classList.remove('active');
+      };
+
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); setKey(true); });
+      btn.addEventListener('touchend', (e) => { e.preventDefault(); setKey(false); });
+      btn.addEventListener('touchcancel', (e) => { e.preventDefault(); setKey(false); });
+      btn.addEventListener('mousedown', () => setKey(true));
+      btn.addEventListener('mouseup', () => setKey(false));
+      btn.addEventListener('mouseleave', () => setKey(false));
+    }
+
+    bindTouchBtn('ctrl-up', 'up');
+    bindTouchBtn('ctrl-down', 'down');
+    bindTouchBtn('ctrl-left', 'left');
+    bindTouchBtn('ctrl-right', 'right');
+    bindTouchBtn('ctrl-bomb', 'bomb');
+
+    // UI Buttons
+    document.getElementById('btn-next-round').addEventListener('click', () => {
+      startNewRound();
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      scores = [0, 0, 0, 0];
+      startNewRound();
+    });
+
+    document.getElementById('btn-sound').addEventListener('click', () => {
+      sound.muted = !sound.muted;
+      const btn = document.getElementById('btn-sound');
+      btn.innerText = sound.muted ? '🔇 SILENCIO' : '🔊 SONIDO';
+      btn.classList.toggle('text-gray-400', sound.muted);
+      btn.classList.toggle('text-yellow-400', !sound.muted);
+    });
+
+    // Start on Window Load
+    window.onload = function () {
+      startNewRound();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
