@@ -1,1 +1,1729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dig Dug - Retro Arcade</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    * {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background-color: #0d0e15;
+    }
+    .pixel-text {
+      font-family: 'Press Start 2P', monospace;
+    }
+    .arcade-font {
+      font-family: 'VT323', monospace;
+    }
+    /* CRT Scanline & Curved Screen Effect */
+    .crt-overlay {
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.28) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+    .bezel-shadow {
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(255, 140, 0, 0.25);
+    }
+    /* Smooth arcade buttons */
+    .arcade-btn {
+      transition: all 0.08s ease-in-out;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.6), 0 8px 12px rgba(0, 0, 0, 0.5);
+    }
+    .arcade-btn:active, .arcade-btn.btn-active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 3px 6px rgba(0, 0, 0, 0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-white flex flex-col items-center justify-between p-2 sm:p-4 select-none overflow-x-hidden">
 
+  <!-- TOP HEADER / ARCADE MARQUEE -->
+  <header class="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 bg-slate-900 border-2 border-amber-600 rounded-lg shadow-lg">
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+      <h1 class="text-xl sm:text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 drop-shadow">
+        DIG DUG
+      </h1>
+      <span class="text-[10px] text-amber-300 border border-amber-500 px-1 py-0.5 rounded">1982 NAMCO</span>
+    </div>
+
+    <!-- Live HUD Info -->
+    <div class="flex items-center gap-4 text-xs">
+      <div class="text-center">
+        <div class="text-[9px] text-slate-400">1UP</div>
+        <div id="hud-score" class="text-yellow-400">00000</div>
+      </div>
+      <div class="text-center">
+        <div class="text-[9px] text-slate-400">HIGH</div>
+        <div id="hud-high" class="text-red-400">20000</div>
+      </div>
+      <div class="text-center">
+        <div class="text-[9px] text-slate-400">ROUND</div>
+        <div id="hud-round" class="text-cyan-400">01</div>
+      </div>
+      <div class="text-center">
+        <div class="text-[9px] text-slate-400">VIDAS</div>
+        <div id="hud-lives" class="flex gap-1 text-amber-400 text-sm">❤️❤️❤️</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN ARCADE CABINET DISPLAY -->
+  <main class="w-full max-w-2xl flex-1 flex flex-col items-center justify-center my-2 relative">
+    
+    <!-- Cabinet Bezel -->
+    <div class="relative bg-neutral-950 p-2 sm:p-3 rounded-2xl border-4 border-slate-800 bezel-shadow flex flex-col items-center justify-center">
+      
+      <!-- Top Arcade Logo Badge -->
+      <div class="w-full flex justify-between items-center px-2 py-1 mb-1 text-[10px] text-slate-400 bg-neutral-900 rounded border border-neutral-800">
+        <span>INSERT COIN (FREE PLAY)</span>
+        <div class="flex items-center gap-2">
+          <button id="btn-sound-toggle" class="hover:text-amber-400 transition">🔊 SONIDO</button>
+          <span>|</span>
+          <button id="btn-crt-toggle" class="hover:text-amber-400 transition">📺 CRT: ON</button>
+        </div>
+      </div>
+
+      <!-- Canvas Container -->
+      <div class="relative overflow-hidden rounded-lg bg-black border-2 border-neutral-700 shadow-inner">
+        <!-- The Game Canvas (Internal: 224 x 288 classic Namco resolution) -->
+        <canvas id="gameCanvas" width="224" height="288" class="block image-rendering-pixelated cursor-crosshair max-w-full h-auto" style="image-rendering: pixelated; width: 448px; height: 576px;"></canvas>
+        
+        <!-- CRT Scanline layer -->
+        <div id="crt-screen" class="crt-overlay absolute inset-0"></div>
+
+        <!-- Overlays (Start / Pause / Game Over) -->
+        <div id="overlay-screen" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-4 text-center z-20">
+          <div id="overlay-content" class="flex flex-col items-center gap-3">
+            <h2 class="text-2xl sm:text-3xl font-black text-amber-400 tracking-wider animate-bounce">
+              DIG DUG
+            </h2>
+            <div class="bg-amber-950/40 border border-amber-500/50 p-3 rounded-lg text-xs space-y-2 text-amber-200 text-left max-w-xs">
+              <p class="text-white font-bold text-center">🎯 OBJETIVO:</p>
+              <p>• Cava túneles bajo tierra.</p>
+              <p>• Infla enemigos con la bomba (<span class="text-yellow-300">ESPACIO</span> / <span class="text-yellow-300">BOTÓN INFLAR</span>) hasta hacerlos estallar.</p>
+              <p>• ¡Haz caer rocas sobre los monstruos para obtener miles de puntos!</p>
+              <p>• Cuidado con el fuego del dragón Fygar.</p>
+            </div>
+            <button id="btn-start" class="arcade-btn mt-2 px-6 py-3 bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white font-bold rounded-lg text-sm tracking-widest border border-yellow-300">
+              ¡JUGAR AHORA!
+            </button>
+            <span class="text-[9px] text-slate-400">Usa Flechas / WASD y ESPACIO</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- MOBILE / ON-SCREEN TOUCH CONTROLS -->
+  <section class="w-full max-w-2xl bg-slate-900/90 border border-slate-700 rounded-xl p-2 sm:p-3 flex items-center justify-between gap-2 shadow-lg">
+    
+    <!-- Virtual D-PAD (Left) -->
+    <div class="relative w-32 h-32 sm:w-36 sm:h-36 grid grid-cols-3 grid-rows-3 gap-1 p-1 bg-neutral-950 rounded-full border-2 border-slate-700 shadow-inner">
+      <div class="col-start-2 row-start-1 flex justify-center">
+        <button id="dpad-up" class="w-full h-full bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-t-lg flex items-center justify-center text-amber-300 text-xs shadow-md">▲</button>
+      </div>
+      <div class="col-start-1 row-start-2 flex items-center">
+        <button id="dpad-left" class="w-full h-full bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-l-lg flex items-center justify-center text-amber-300 text-xs shadow-md">◀</button>
+      </div>
+      <div class="col-start-2 row-start-2 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-700">
+        <div class="w-4 h-4 rounded-full bg-amber-500/20"></div>
+      </div>
+      <div class="col-start-3 row-start-2 flex items-center">
+        <button id="dpad-right" class="w-full h-full bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-r-lg flex items-center justify-center text-amber-300 text-xs shadow-md">▶</button>
+      </div>
+      <div class="col-start-2 row-start-3 flex justify-center">
+        <button id="dpad-down" class="w-full h-full bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-b-lg flex items-center justify-center text-amber-300 text-xs shadow-md">▼</button>
+      </div>
+    </div>
+
+    <!-- Center Control Utilities -->
+    <div class="flex flex-col items-center gap-2">
+      <button id="btn-pause" class="px-3 py-1.5 text-[10px] bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded border border-slate-600 text-slate-200">
+        ⏸ PAUSA
+      </button>
+      <button id="btn-restart" class="px-3 py-1.5 text-[10px] bg-red-900/80 hover:bg-red-800 active:bg-red-700 rounded border border-red-700 text-red-200">
+        ↺ REINICIAR
+      </button>
+      <span class="text-[8px] text-slate-400">DIG DUG HTML5</span>
+    </div>
+
+    <!-- Big Action Pump Button (Right) -->
+    <div class="flex flex-col items-center gap-1">
+      <button id="btn-pump" class="arcade-btn w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-b from-red-500 to-red-700 border-4 border-yellow-400 flex flex-col items-center justify-center shadow-xl active:bg-red-800">
+        <span class="text-xs sm:text-sm font-black text-yellow-200 tracking-wider drop-shadow">PUMP</span>
+        <span class="text-[8px] text-white/80">INFLAR / DISPARO</span>
+      </button>
+      <span class="text-[9px] text-amber-300 font-bold">ESPACIO / Z</span>
+    </div>
+
+  </section>
+
+  <!-- JAVASCRIPT: ENGINE & SOUND SYNTHESIS -->
+  <script>
+    /* ==========================================================================
+       1. RETRO WEB AUDIO API CHIPTUNE SYNTHESIZER
+       ========================================================================== */
+    class RetroAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.walkOsc = null;
+        this.walkGain = null;
+        this.walkStep = 0;
+        this.walkNotes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+        this.isWalking = false;
+        this.lastWalkTime = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleSound() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+
+      // Dig Dug's famous walking tune (only plays while moving!)
+      playWalkBeat() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        if (now - this.lastWalkTime < 0.11) return;
+        this.lastWalkTime = now;
+
+        const melody = [
+          392, 392, 0, 392, 440, 392, 0, 349.2, 
+          329.6, 329.6, 0, 329.6, 349.2, 329.6, 0, 293.7,
+          261.6, 293.7, 329.6, 349.2, 392, 440, 493.9, 523.3
+        ];
+
+        const freq = melody[this.walkStep % melody.length];
+        this.walkStep++;
+
+        if (freq > 0) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now);
+          
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.1);
+        }
+      }
+
+      // Shoot harpoon wire
+      playShoot() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      // Pump air into enemy (ascending pitch per stage)
+      playPump(stage = 1) {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const baseFreq = 220 + (stage * 90);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.linearRampToValueAtTime(baseFreq + 120, now + 0.08);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      // Enemy Pops!
+      playPop() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        
+        // High beep pop
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+
+        // White noise burst
+        const bufferSize = this.ctx.sampleRate * 0.15;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.25, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        noise.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      // Rock drops & crumbles
+      playRockFall() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      }
+
+      // Fygar fire breath
+      playFire() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.35;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.5;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.exponentialRampToValueAtTime(150, now + 0.35);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      // Dig Dug Death jingle
+      playDeath() {
+        if (!this.enabled) return;
+        this.init();
+        const notes = [440, 415, 392, 349, 311, 261];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = this.ctx.currentTime + (idx * 0.12);
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.15, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.11);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.11);
+        });
+      }
+
+      // Victory fanfare
+      playRoundClear() {
+        if (!this.enabled) return;
+        this.init();
+        const fanfare = [
+          { f: 523.25, d: 0.1 }, { f: 659.25, d: 0.1 }, 
+          { f: 783.99, d: 0.1 }, { f: 1046.50, d: 0.3 }
+        ];
+        let cur = this.ctx.currentTime;
+        fanfare.forEach(note => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(note.f, cur);
+          gain.gain.setValueAtTime(0.15, cur);
+          gain.gain.exponentialRampToValueAtTime(0.01, cur + note.d);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(cur);
+          osc.stop(cur + note.d);
+          cur += note.d + 0.03;
+        });
+      }
+    }
+
+    const sound = new RetroAudioEngine();
+
+    /* ==========================================================================
+       2. DIG DUG GAME ENGINE
+       ========================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Canvas size: 224 x 288 (14 x 18 tiles of 16x16, or 28 x 36 fine 8x8 subcells)
+    const INTERNAL_W = 224;
+    const INTERNAL_H = 288;
+    const CELL_SIZE = 8; // Fine grid cell for authentic rounded/square tunnels
+    const GRID_COLS = INTERNAL_W / CELL_SIZE; // 28
+    const GRID_ROWS = INTERNAL_H / CELL_SIZE; // 36
+
+    // Layers definition (Row ranges in 8x8 cells)
+    // Rows 0-3: Sky / Top (empty)
+    // Rows 4-5: Surface Grass & Dirt
+    // Rows 6-12: Layer 1 (Beige Sand)
+    // Rows 13-19: Layer 2 (Warm Ochre)
+    // Rows 20-27: Layer 3 (Terracotta Orange)
+    // Rows 28-35: Layer 4 (Deep Earth Brown)
+    const LAYER_COLORS = {
+      SKY: '#000000',
+      SURFACE_GRASS: '#38b000',
+      SURFACE_DIRT: '#e29578',
+      L1: '#f4a261', // Sand
+      L2: '#e76f51', // Orange
+      L3: '#c44536', // Terracotta
+      L4: '#772f1a', // Deep brown
+      TUNNEL: '#000000'
+    };
+
+    // Game state
+    const STATE = {
+      MENU: 0,
+      PLAYING: 1,
+      PAUSED: 2,
+      DYING: 3,
+      ROUND_CLEAR: 4,
+      GAME_OVER: 5
+    };
+
+    class DigDugGame {
+      constructor() {
+        this.state = STATE.MENU;
+        this.score = 0;
+        this.highScore = 20000;
+        try {
+          const saved = localStorage.getItem('digdug_high');
+          if (saved) this.highScore = parseInt(saved, 10) || 20000;
+        } catch (e) {
+          // Fallback if localStorage is restricted
+        }
+        this.round = 1;
+        this.lives = 3;
+        this.grid = new Uint8Array(GRID_COLS * GRID_ROWS);
+        
+        // Entities
+        this.player = null;
+        this.enemies = [];
+        this.rocks = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.vegetable = null;
+
+        // Harpoon wire
+        this.harpoon = null;
+
+        // Counters
+        this.rocksFallenCount = 0;
+        this.stateTimer = 0;
+        this.animFrame = 0;
+
+        // Input controls
+        this.keys = {
+          up: false,
+          down: false,
+          left: false,
+          right: false,
+          pump: false
+        };
+        this.pumpPressedThisFrame = false;
+
+        this.initInput();
+        // Pre-build level and player so draw() has entities to render immediately
+        this.setupLevel();
+        this.state = STATE.MENU;
+      }
+
+      initInput() {
+        // Keyboard listeners
+        window.addEventListener('keydown', (e) => {
+          if (['ArrowUp', 'KeyW'].includes(e.code)) this.keys.up = true;
+          if (['ArrowDown', 'KeyS'].includes(e.code)) this.keys.down = true;
+          if (['ArrowLeft', 'KeyA'].includes(e.code)) this.keys.left = true;
+          if (['ArrowRight', 'KeyD'].includes(e.code)) this.keys.right = true;
+          if (['Space', 'KeyZ', 'KeyK', 'Enter'].includes(e.code)) {
+            if (!this.keys.pump) this.pumpPressedThisFrame = true;
+            this.keys.pump = true;
+          }
+          if (e.code === 'KeyP' || e.code === 'Escape') this.togglePause();
+
+          // User interaction unblocks audio
+          sound.init();
+        });
+
+        window.addEventListener('keyup', (e) => {
+          if (['ArrowUp', 'KeyW'].includes(e.code)) this.keys.up = false;
+          if (['ArrowDown', 'KeyS'].includes(e.code)) this.keys.down = false;
+          if (['ArrowLeft', 'KeyA'].includes(e.code)) this.keys.left = false;
+          if (['ArrowRight', 'KeyD'].includes(e.code)) this.keys.right = false;
+          if (['Space', 'KeyZ', 'KeyK', 'Enter'].includes(e.code)) this.keys.pump = false;
+        });
+
+        // Touch & Virtual D-PAD
+        const bindTouch = (id, keyName) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const press = (ev) => {
+            ev.preventDefault();
+            sound.init();
+            this.keys[keyName] = true;
+            if (keyName === 'pump') this.pumpPressedThisFrame = true;
+            el.classList.add('bg-amber-600', 'btn-active');
+          };
+          const release = (ev) => {
+            ev.preventDefault();
+            this.keys[keyName] = false;
+            el.classList.remove('bg-amber-600', 'btn-active');
+          };
+          el.addEventListener('touchstart', press, { passive: false });
+          el.addEventListener('touchend', release, { passive: false });
+          el.addEventListener('mousedown', press);
+          el.addEventListener('mouseup', release);
+          el.addEventListener('mouseleave', release);
+        };
+
+        bindTouch('dpad-up', 'up');
+        bindTouch('dpad-down', 'down');
+        bindTouch('dpad-left', 'left');
+        bindTouch('dpad-right', 'right');
+        bindTouch('btn-pump', 'pump');
+
+        // Buttons
+        document.getElementById('btn-start').addEventListener('click', () => {
+          sound.init();
+          this.startGame();
+        });
+        document.getElementById('btn-pause').addEventListener('click', () => this.togglePause());
+        document.getElementById('btn-restart').addEventListener('click', () => {
+          sound.init();
+          this.resetGame();
+        });
+
+        document.getElementById('btn-sound-toggle').addEventListener('click', (e) => {
+          const on = sound.toggleSound();
+          e.target.textContent = on ? '🔊 SONIDO' : '🔇 MUDO';
+        });
+
+        const crtScreen = document.getElementById('crt-screen');
+        const crtBtn = document.getElementById('btn-crt-toggle');
+        crtBtn.addEventListener('click', () => {
+          if (crtScreen.style.display === 'none') {
+            crtScreen.style.display = 'block';
+            crtBtn.textContent = '📺 CRT: ON';
+          } else {
+            crtScreen.style.display = 'none';
+            crtBtn.textContent = '📺 CRT: OFF';
+          }
+        });
+      }
+
+      togglePause() {
+        if (this.state === STATE.PLAYING) {
+          this.state = STATE.PAUSED;
+          this.showOverlay('JUEGO EN PAUSA', 'Presiona PAUSA para continuar', 'CONTINUAR');
+        } else if (this.state === STATE.PAUSED) {
+          this.state = STATE.PLAYING;
+          this.hideOverlay();
+        }
+      }
+
+      showOverlay(title, desc, btnText) {
+        const overlay = document.getElementById('overlay-screen');
+        const content = document.getElementById('overlay-content');
+        content.innerHTML = `
+          <h2 class="text-2xl font-black text-amber-400 tracking-wider animate-bounce">${title}</h2>
+          <p class="text-xs text-slate-300 max-w-xs">${desc}</p>
+          <button id="btn-overlay-action" class="arcade-btn mt-3 px-6 py-3 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold rounded-lg text-sm border border-yellow-300">
+            ${btnText}
+          </button>
+        `;
+        overlay.classList.remove('hidden');
+        document.getElementById('btn-overlay-action').onclick = () => {
+          sound.init();
+          if (this.state === STATE.PAUSED) {
+            this.state = STATE.PLAYING;
+            this.hideOverlay();
+          } else {
+            this.startGame();
+          }
+        };
+      }
+
+      hideOverlay() {
+        document.getElementById('overlay-screen').classList.add('hidden');
+      }
+
+      resetGame() {
+        this.score = 0;
+        this.lives = 3;
+        this.round = 1;
+        this.startRound();
+      }
+
+      startGame() {
+        this.hideOverlay();
+        this.resetGame();
+      }
+
+      /* ==========================================================================
+         ROUND INITIALIZATION & LEVEL LAYOUT
+         ========================================================================== */
+      setupLevel() {
+        this.stateTimer = 0;
+        this.harpoon = null;
+        this.vegetable = null;
+        this.rocksFallenCount = 0;
+        this.particles = [];
+        this.floatingTexts = [];
+        this.updateHUD();
+
+        // Fill grid with soil layers
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const idx = r * GRID_COLS + c;
+            if (r < 4) {
+              this.grid[idx] = 0; // Sky / Open air
+            } else if (r < 6) {
+              this.grid[idx] = 1; // Surface grass / dirt
+            } else if (r < 13) {
+              this.grid[idx] = 2; // Sand layer
+            } else if (r < 20) {
+              this.grid[idx] = 3; // Orange layer
+            } else if (r < 28) {
+              this.grid[idx] = 4; // Terracotta layer
+            } else {
+              this.grid[idx] = 5; // Deep brown layer
+            }
+          }
+        }
+
+        // Initialize Player in the center vertical tunnel
+        this.player = new Player(156, 172);
+        // Vertical shaft from surface
+        this.carveTunnel(156, 96, 16, 140);
+        // Cross tunnel for player
+        this.carveTunnel(156, 172, 32, 16);
+
+        // Pre-carve caves for enemies & place enemies
+        this.enemies = [];
+        this.rocks = [];
+
+        // Pre-set tunnels per round matching the arcade layout
+        const enemyCount = Math.min(3 + this.round, 8);
+        const fygarCount = Math.min(1 + Math.floor(this.round / 2), 4);
+
+        const caves = [
+          { x: 120, y: 120, w: 32, h: 16, type: 'pooka' },
+          { x: 168, y: 96,  w: 16, h: 44, type: 'pooka' },
+          { x: 200, y: 70,  w: 32, h: 16, type: 'fygar' },
+          { x: 146, y: 250, w: 16, h: 40, type: 'pooka' },
+          { x: 190, y: 268, w: 32, h: 16, type: 'fygar' }
+        ];
+
+        // Carve caves and spawn enemies
+        for (let i = 0; i < caves.length; i++) {
+          const cave = caves[i];
+          this.carveTunnel(cave.x, cave.y, cave.w, cave.h);
+        }
+
+        for (let i = 0; i < enemyCount; i++) {
+          const cave = caves[i % caves.length];
+          const isFygar = i < fygarCount;
+          const EnemyClass = isFygar ? Fygar : Pooka;
+          this.enemies.push(new EnemyClass(cave.x, cave.y, this.round));
+        }
+
+        // Place Rocks in dirt around the board
+        const rockLocations = [
+          { x: 125, y: 72 },
+          { x: 202, y: 152 },
+          { x: 136, y: 226 },
+          { x: 212, y: 252 }
+        ];
+        const numRocks = Math.min(3 + (this.round > 2 ? 1 : 0), rockLocations.length);
+        for (let i = 0; i < numRocks; i++) {
+          this.rocks.push(new Rock(rockLocations[i].x, rockLocations[i].y));
+        }
+      }
+
+      startRound() {
+        this.setupLevel();
+        this.state = STATE.PLAYING;
+        this.addFloatingText(INTERNAL_W / 2, INTERNAL_H / 2, `ROUND ${this.round}`, '#38bdf8', 120);
+      }
+
+      // Carve rectangular tunnel into fine grid
+      carveTunnel(x, y, w, h) {
+        const startC = Math.max(0, Math.floor((x - w / 2) / CELL_SIZE));
+        const endC = Math.min(GRID_COLS - 1, Math.floor((x + w / 2) / CELL_SIZE));
+        const startR = Math.max(0, Math.floor((y - h / 2) / CELL_SIZE));
+        const endR = Math.min(GRID_ROWS - 1, Math.floor((y + h / 2) / CELL_SIZE));
+
+        for (let r = startR; r <= endR; r++) {
+          for (let c = startC; c <= endC; c++) {
+            this.grid[r * GRID_COLS + c] = 0; // 0 = empty tunnel
+          }
+        }
+      }
+
+      // Carve round brush as player moves
+      digAt(px, py) {
+        let dugAny = false;
+        const radius = 7;
+        const minC = Math.max(0, Math.floor((px - radius) / CELL_SIZE));
+        const maxC = Math.min(GRID_COLS - 1, Math.floor((px + radius) / CELL_SIZE));
+        const minR = Math.max(4, Math.floor((py - radius) / CELL_SIZE));
+        const maxR = Math.min(GRID_ROWS - 1, Math.floor((py + radius) / CELL_SIZE));
+
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            const idx = r * GRID_COLS + c;
+            if (this.grid[idx] !== 0) {
+              this.grid[idx] = 0;
+              dugAny = true;
+              this.addScore(10);
+            }
+          }
+        }
+        return dugAny;
+      }
+
+      // Check if coordinate is solid dirt
+      isSolidDirt(px, py) {
+        const c = Math.floor(px / CELL_SIZE);
+        const r = Math.floor(py / CELL_SIZE);
+        if (c < 0 || c >= GRID_COLS || r < 4 || r >= GRID_ROWS) return false;
+        return this.grid[r * GRID_COLS + c] !== 0;
+      }
+
+      // Check if rock can fall (if ground directly beneath is empty)
+      isGroundCarved(x, y, w = 14) {
+        const r = Math.floor((y + 9) / CELL_SIZE);
+        const c1 = Math.floor((x - w / 2 + 2) / CELL_SIZE);
+        const c2 = Math.floor((x + w / 2 - 2) / CELL_SIZE);
+        if (r >= GRID_ROWS) return false;
+        return this.grid[r * GRID_COLS + c1] === 0 && this.grid[r * GRID_COLS + c2] === 0;
+      }
+
+      addScore(pts, x = null, y = null) {
+        this.score += pts;
+        if (this.score > this.highScore) {
+          this.highScore = this.score;
+          try {
+            localStorage.setItem('digdug_high', this.highScore.toString());
+          } catch (e) {
+            // Storage access restricted safe handling
+          }
+        }
+        if (x !== null && y !== null) {
+          this.addFloatingText(x, y, `+${pts}`, '#fde047');
+        }
+        this.updateHUD();
+      }
+
+      addFloatingText(x, y, text, color = '#fff', life = 45) {
+        this.floatingTexts.push({ x, y, text, color, life, maxLife: life });
+      }
+
+      updateHUD() {
+        document.getElementById('hud-score').textContent = String(this.score).padStart(5, '0');
+        document.getElementById('hud-high').textContent = String(this.highScore).padStart(5, '0');
+        document.getElementById('hud-round').textContent = String(this.round).padStart(2, '0');
+        document.getElementById('hud-lives').textContent = '❤️'.repeat(Math.max(0, this.lives));
+      }
+
+      /* ==========================================================================
+         MAIN UPDATE CYCLE
+         ========================================================================== */
+      update() {
+        this.animFrame++;
+
+        if (this.state === STATE.PLAYING && this.player) {
+          // 1. Update Player
+          this.player.update(this);
+
+          // 2. Harpoon update
+          if (this.harpoon) {
+            this.harpoon.update(this);
+          }
+
+          // 3. Update Rocks
+          for (let i = this.rocks.length - 1; i >= 0; i--) {
+            const rock = this.rocks[i];
+            rock.update(this);
+            if (rock.destroyed) {
+              this.rocks.splice(i, 1);
+              this.rocksFallenCount++;
+              // Spawn bonus vegetable after 2 rocks drop!
+              if (this.rocksFallenCount === 2 && !this.vegetable) {
+                this.vegetable = new BonusVegetable(112, 48, this.round);
+              }
+            }
+          }
+
+          // 4. Update Enemies
+          let allEscaping = this.enemies.length === 1;
+          for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (allEscaping && enemy.state !== 'POPPING' && enemy.state !== 'CRUSHED') {
+              enemy.isFleeing = true;
+            }
+            enemy.update(this);
+
+            // Pop / Death handling
+            if (enemy.popped) {
+              sound.playPop();
+              const depthLayer = Math.min(4, Math.max(1, Math.floor(enemy.y / 64)));
+              const basePts = enemy instanceof Fygar ? (enemy.horizontalPump ? 1000 : 400) : 300;
+              const earned = basePts * depthLayer;
+              this.addScore(earned, enemy.x, enemy.y);
+              this.createExplosionParticles(enemy.x, enemy.y, enemy instanceof Fygar ? '#22c55e' : '#f97316');
+              this.enemies.splice(i, 1);
+            } else if (enemy.escaped) {
+              this.enemies.splice(i, 1);
+            }
+          }
+
+          // 5. Update Vegetable
+          if (this.vegetable) {
+            this.vegetable.update(this);
+            if (this.vegetable.collected) {
+              sound.playRoundClear();
+              this.addScore(this.vegetable.points, this.vegetable.x, this.vegetable.y);
+              this.vegetable = null;
+            } else if (this.vegetable.expired) {
+              this.vegetable = null;
+            }
+          }
+
+          // Check Round Clear
+          if (this.enemies.length === 0) {
+            this.state = STATE.ROUND_CLEAR;
+            this.stateTimer = 100;
+            sound.playRoundClear();
+          }
+
+        } else if (this.state === STATE.ROUND_CLEAR) {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.round++;
+            this.startRound();
+          }
+        } else if (this.state === STATE.DYING) {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.lives--;
+            this.updateHUD();
+            if (this.lives > 0) {
+              this.startRound();
+            } else {
+              this.state = STATE.GAME_OVER;
+              this.showOverlay(
+                'GAME OVER', 
+                `Puntaje Final: ${this.score} pts. ¿Deseas intentar de nuevo?`, 
+                'REINTENTAR'
+              );
+            }
+          }
+        }
+
+        // Update Particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.15; // Gravity
+          p.life--;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        // Update Floating Texts
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = this.floatingTexts[i];
+          ft.y -= 0.4;
+          ft.life--;
+          if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+
+        this.pumpPressedThisFrame = false;
+      }
+
+      killPlayer() {
+        if (this.state !== STATE.PLAYING || !this.player) return;
+        this.state = STATE.DYING;
+        this.stateTimer = 90;
+        this.harpoon = null;
+        sound.playDeath();
+        this.createExplosionParticles(this.player.x, this.player.y, '#38bdf8');
+      }
+
+      createExplosionParticles(x, y, color) {
+        for (let i = 0; i < 16; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = 0.5 + Math.random() * 2.5;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd - 1,
+            color,
+            size: 2 + Math.random() * 2,
+            life: 25 + Math.random() * 15
+          });
+        }
+      }
+
+      /* ==========================================================================
+         RENDER CYCLE (CANVAS 2D PIXEL ART)
+         ========================================================================== */
+      draw() {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+
+        // 1. Draw Surface Sky & Dirt Layers
+        this.drawTerrain();
+
+        // 2. In MENU state, render the iconic arcade title logo
+        if (this.state === STATE.MENU) {
+          this.drawLogo(ctx);
+        }
+
+        // 3. Draw Vegetable
+        if (this.vegetable) this.vegetable.draw(ctx);
+
+        // 4. Draw Rocks
+        for (const rock of this.rocks) rock.draw(ctx);
+
+        // 5. Draw Harpoon Wire
+        if (this.harpoon) this.harpoon.draw(ctx);
+
+        // 6. Draw Enemies
+        for (const enemy of this.enemies) enemy.draw(ctx);
+
+        // 7. Draw Player (with safety check if player exists)
+        if (this.player && (this.state !== STATE.DYING || (Math.floor(this.animFrame / 6) % 2 === 0))) {
+          this.player.draw(ctx);
+        }
+
+        // 8. Draw Particles
+        for (const p of this.particles) {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+        }
+
+        // 9. Draw Floating Score Text
+        ctx.font = '8px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        for (const ft of this.floatingTexts) {
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, Math.floor(ft.x), Math.floor(ft.y));
+        }
+
+        // Round Clear Banner
+        if (this.state === STATE.ROUND_CLEAR) {
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = '10px "Press Start 2P"';
+          ctx.fillText('STAGE CLEAR!', INTERNAL_W / 2, INTERNAL_H / 2);
+        }
+      }
+
+      drawLogo(ctx) {
+        ctx.save();
+        ctx.font = 'bold 16px "Press Start 2P", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        
+        // Deep blue outer outline
+        ctx.strokeStyle = '#1e40af';
+        ctx.lineWidth = 5;
+        ctx.lineJoin = 'round';
+        ctx.strokeText('DIG DUG', 24, 126);
+        
+        // Classic arcade yellow lettering
+        ctx.fillStyle = '#facc15';
+        ctx.fillText('DIG DUG', 24, 126);
+        ctx.restore();
+      }
+
+      drawTerrain() {
+        // Draw open Sky
+        ctx.fillStyle = '#1e1b4b'; // Deep twilight blue sky
+        ctx.fillRect(0, 0, INTERNAL_W, 32);
+
+        // Sky clouds / decorative flowers
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(16, 26, 4, 4);
+        ctx.fillRect(192, 26, 4, 4);
+
+        // Draw Soil Cells based on fine grid
+        for (let r = 4; r < GRID_ROWS; r++) {
+          const y = r * CELL_SIZE;
+          let layerColor = LAYER_COLORS.L1;
+          let dotColor = '#fcd34d';
+
+          if (r < 6) {
+            layerColor = LAYER_COLORS.SURFACE_GRASS;
+            dotColor = '#86efac';
+          } else if (r < 13) {
+            layerColor = LAYER_COLORS.L1;
+            dotColor = '#fed7aa';
+          } else if (r < 20) {
+            layerColor = LAYER_COLORS.L2;
+            dotColor = '#fdba74';
+          } else if (r < 28) {
+            layerColor = LAYER_COLORS.L3;
+            dotColor = '#fca5a5';
+          } else {
+            layerColor = LAYER_COLORS.L4;
+            dotColor = '#f87171';
+          }
+
+          for (let c = 0; c < GRID_COLS; c++) {
+            const idx = r * GRID_COLS + c;
+            const tile = this.grid[idx];
+            const x = c * CELL_SIZE;
+
+            if (tile !== 0) {
+              // Solid soil
+              ctx.fillStyle = layerColor;
+              ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+
+              // Classic Dig Dug stippling / polka dots
+              if ((r + c) % 2 === 0) {
+                ctx.fillStyle = dotColor;
+                ctx.fillRect(x + 2, y + 2, 2, 2);
+              }
+            } else {
+              // Empty tunnel (black space)
+              ctx.fillStyle = LAYER_COLORS.TUNNEL;
+              ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+            }
+          }
+        }
+      }
+    }
+
+    /* ==========================================================================
+       3. PLAYER (TAIZO HORI)
+       ========================================================================== */
+    class Player {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.dir = 0; // 0: Right, 1: Down, 2: Left, 3: Up
+        this.speed = 1.35;
+        this.digSpeed = 0.95;
+        this.animStep = 0;
+        this.isMoving = false;
+        this.isDigging = false;
+        this.w = 12;
+        this.h = 12;
+      }
+
+      update(game) {
+        let dx = 0;
+        let dy = 0;
+
+        // If currently pumping an enemy, player stays locked in place pumping
+        if (game.harpoon && game.harpoon.hookedEnemy) {
+          if (game.pumpPressedThisFrame) {
+            game.harpoon.pumpEnemy(game);
+          }
+          return;
+        }
+
+        if (game.keys.right) { dx += 1; this.dir = 0; }
+        else if (game.keys.left) { dx -= 1; this.dir = 2; }
+        else if (game.keys.down) { dy += 1; this.dir = 1; }
+        else if (game.keys.up) { dy -= 1; this.dir = 3; }
+
+        this.isMoving = (dx !== 0 || dy !== 0);
+
+        if (this.isMoving) {
+          // Play famous walk step audio
+          sound.playWalkBeat();
+          this.animStep++;
+
+          // Check if digging solid dirt ahead
+          const checkX = this.x + dx * 6;
+          const checkY = this.y + dy * 6;
+          this.isDigging = game.isSolidDirt(checkX, checkY);
+          const currentSpd = this.isDigging ? this.digSpeed : this.speed;
+
+          const nextX = Math.max(8, Math.min(INTERNAL_W - 8, this.x + dx * currentSpd));
+          const nextY = Math.max(20, Math.min(INTERNAL_H - 10, this.y + dy * currentSpd));
+
+          this.x = nextX;
+          this.y = nextY;
+
+          // Dig through dirt
+          game.digAt(this.x, this.y);
+        } else {
+          this.isDigging = false;
+        }
+
+        // Fire harpoon pump
+        if (game.pumpPressedThisFrame && !game.harpoon) {
+          game.harpoon = new Harpoon(this.x, this.y, this.dir);
+          sound.playShoot();
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(Math.floor(this.x), Math.floor(this.y));
+
+        // Flip if facing left
+        if (this.dir === 2) ctx.scale(-1, 1);
+
+        const walkFrame = Math.floor(this.animStep / 6) % 2;
+
+        // White Suit
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-5, -5, 10, 10);
+
+        // Blue Visor / Helmet Trim
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(-3, -7, 7, 3);
+        ctx.fillRect(-5, -4, 3, 5);
+
+        // Face Visor Glasses
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(1, -4, 4, 3);
+
+        // Shovel / Pump Hand
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(3, 0, 4, 3);
+
+        // Feet / Boots walking
+        ctx.fillStyle = '#0369a1';
+        if (walkFrame === 0) {
+          ctx.fillRect(-4, 5, 3, 3);
+          ctx.fillRect(1, 4, 3, 4);
+        } else {
+          ctx.fillRect(-4, 4, 3, 4);
+          ctx.fillRect(1, 5, 3, 3);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       4. HARPOON / PUMP HOSE
+       ========================================================================== */
+    class Harpoon {
+      constructor(x, y, dir) {
+        this.startX = x;
+        this.startY = y;
+        this.dir = dir;
+        this.length = 0;
+        this.maxLength = 44;
+        this.speed = 4;
+        this.hookedEnemy = null;
+        this.retracting = false;
+        this.life = 60; // Max time before auto-retract
+      }
+
+      update(game) {
+        // If hooked to an enemy, hold the tether
+        if (this.hookedEnemy) {
+          if (this.hookedEnemy.popped || this.hookedEnemy.escaped) {
+            game.harpoon = null;
+            return;
+          }
+          // If player moves away or doesn't pump, tether breaks after a while
+          this.life--;
+          if (this.life <= 0) {
+            this.hookedEnemy.unhook();
+            game.harpoon = null;
+          }
+          return;
+        }
+
+        // Extend the harpoon in facing direction
+        if (!this.retracting) {
+          this.length += this.speed;
+
+          const tip = this.getTip();
+          // Hit solid dirt -> stop and retract
+          if (game.isSolidDirt(tip.x, tip.y) || this.length >= this.maxLength) {
+            this.retracting = true;
+          }
+
+          // Check hit against enemies
+          for (const enemy of game.enemies) {
+            if (enemy.state !== 'POPPING' && enemy.state !== 'CRUSHED') {
+              const dist = Math.hypot(tip.x - enemy.x, tip.y - enemy.y);
+              if (dist < 10) {
+                this.hookedEnemy = enemy;
+                enemy.hook();
+                sound.playPump(1);
+                return;
+              }
+            }
+          }
+        } else {
+          this.length -= this.speed * 1.5;
+          if (this.length <= 0) {
+            game.harpoon = null;
+          }
+        }
+      }
+
+      pumpEnemy(game) {
+        if (!this.hookedEnemy) return;
+        this.life = 70; // Refresh tether time
+        const popped = this.hookedEnemy.inflate();
+        sound.playPump(this.hookedEnemy.inflateStage);
+        if (popped) {
+          game.harpoon = null;
+        }
+      }
+
+      getTip() {
+        let x = this.startX;
+        let y = this.startY;
+        if (this.dir === 0) x += this.length;
+        else if (this.dir === 1) y += this.length;
+        else if (this.dir === 2) x -= this.length;
+        else if (this.dir === 3) y -= this.length;
+        return { x, y };
+      }
+
+      draw(ctx) {
+        const tip = this.getTip();
+
+        // Wire cord
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(Math.floor(this.startX), Math.floor(this.startY));
+        ctx.lineTo(Math.floor(tip.x), Math.floor(tip.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Harpoon metal tip
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(Math.floor(tip.x) - 2, Math.floor(tip.y) - 2, 4, 4);
+      }
+    }
+
+    /* ==========================================================================
+       5. ENEMIES: POOKA & FYGAR
+       ========================================================================== */
+    class Enemy {
+      constructor(x, y, round) {
+        this.x = x;
+        this.y = y;
+        this.round = round;
+        this.dir = Math.random() > 0.5 ? 0 : 2; // Right or Left
+        this.speed = 0.65 + Math.min(0.4, round * 0.08);
+        this.ghostSpeed = 0.45;
+        this.state = 'PATROL'; // PATROL, GHOST, HOOKED, POPPING, CRUSHED
+        this.inflateStage = 0; // 0 to 4 (4 = POP!)
+        this.deflateTimer = 0;
+        this.ghostTimer = 180 + Math.random() * 200;
+        this.popped = false;
+        this.escaped = false;
+        this.isFleeing = false;
+        this.w = 12;
+        this.h = 12;
+      }
+
+      hook() {
+        this.state = 'HOOKED';
+        this.inflateStage = 1;
+        this.deflateTimer = 40;
+      }
+
+      unhook() {
+        this.state = 'PATROL';
+        this.inflateStage = 0;
+      }
+
+      inflate() {
+        this.inflateStage++;
+        this.deflateTimer = 45;
+        if (this.inflateStage >= 4) {
+          this.state = 'POPPING';
+          this.popped = true;
+          return true;
+        }
+        return false;
+      }
+
+      updateCommon(game) {
+        // Deflating logic when player stops pumping
+        if (this.state === 'HOOKED') {
+          this.deflateTimer--;
+          if (this.deflateTimer <= 0) {
+            this.inflateStage--;
+            this.deflateTimer = 35;
+            if (this.inflateStage <= 0) {
+              this.unhook();
+              if (game.harpoon && game.harpoon.hookedEnemy === this) {
+                game.harpoon = null;
+              }
+            }
+          }
+          return;
+        }
+
+        // Fleeing when last enemy remaining
+        if (this.isFleeing) {
+          if (this.y > 20) {
+            this.y -= this.speed;
+          } else if (this.x > 8) {
+            this.x -= this.speed;
+          } else {
+            this.escaped = true;
+          }
+          return;
+        }
+
+        // Collision with player
+        const distToPlayer = Math.hypot(this.x - game.player.x, this.y - game.player.y);
+        if (distToPlayer < 9 && this.state !== 'HOOKED' && this.state !== 'POPPING' && this.state !== 'CRUSHED') {
+          game.killPlayer();
+        }
+
+        // Ghost Mode toggle (turns into goggle eyes floating across solid dirt!)
+        if (this.state === 'PATROL') {
+          this.ghostTimer--;
+          if (this.ghostTimer <= 0) {
+            this.state = 'GHOST';
+            this.ghostTimer = 220;
+          }
+        } else if (this.state === 'GHOST') {
+          // Drift straight toward player through dirt
+          const angle = Math.atan2(game.player.y - this.y, game.player.x - this.x);
+          this.x += Math.cos(angle) * this.ghostSpeed;
+          this.y += Math.sin(angle) * this.ghostSpeed;
+
+          // If reached a carved tunnel cell, materialize back to normal!
+          if (!game.isSolidDirt(this.x, this.y) && Math.random() < 0.05) {
+            this.state = 'PATROL';
+            this.ghostTimer = 240 + Math.random() * 200;
+          }
+          return;
+        }
+
+        // Normal Patrol inside carved tunnels
+        let dx = (this.dir === 0) ? this.speed : (this.dir === 2 ? -this.speed : 0);
+        let dy = (this.dir === 1) ? this.speed : (this.dir === 3 ? -this.speed : 0);
+
+        const checkX = this.x + (dx !== 0 ? Math.sign(dx) * 8 : 0);
+        const checkY = this.y + (dy !== 0 ? Math.sign(dy) * 8 : 0);
+
+        // Turn around if hit solid dirt or canvas bounds
+        if (game.isSolidDirt(checkX, checkY) || checkX < 8 || checkX > INTERNAL_W - 8 || checkY < 32 || checkY > INTERNAL_H - 10) {
+          // Switch direction
+          if (Math.random() < 0.5) {
+            this.dir = (this.dir + 2) % 4; // Reverse
+          } else {
+            this.dir = Math.floor(Math.random() * 4); // Pick random turn
+          }
+        } else {
+          this.x += dx;
+          this.y += dy;
+        }
+      }
+    }
+
+    /* Pooka (Round orange ball with yellow goggles) */
+    class Pooka extends Enemy {
+      constructor(x, y, round) {
+        super(x, y, round);
+      }
+
+      update(game) {
+        this.updateCommon(game);
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(Math.floor(this.x), Math.floor(this.y));
+
+        // Scale up when inflated
+        const scale = 1 + (this.inflateStage * 0.35);
+        ctx.scale(scale, scale);
+
+        if (this.state === 'GHOST') {
+          // Ghost Eyes mode
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(-5, -3, 4, 5);
+          ctx.fillRect(1, -3, 4, 5);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(-4, -1, 2, 3);
+          ctx.fillRect(2, -1, 2, 3);
+          ctx.restore();
+          return;
+        }
+
+        // Orange Body
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big Yellow Goggles
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-5, -4, 10, 4);
+
+        // Glass lenses
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-4, -3, 3, 2);
+        ctx.fillRect(1, -3, 3, 2);
+
+        // Pupils
+        ctx.fillStyle = '#000000';
+        const pOffset = this.dir === 0 ? 1 : (this.dir === 2 ? -1 : 0);
+        ctx.fillRect(-3 + pOffset, -3, 2, 2);
+        ctx.fillRect(2 + pOffset, -3, 2, 2);
+
+        // Yellow Feet
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-4, 5, 3, 2);
+        ctx.fillRect(1, 5, 3, 2);
+
+        ctx.restore();
+      }
+    }
+
+    /* Fygar (Green dragon that breathes horizontal fire!) */
+    class Fygar extends Enemy {
+      constructor(x, y, round) {
+        super(x, y, round);
+        this.fireTimer = 160 + Math.random() * 180;
+        this.isFiring = false;
+        this.fireProgress = 0;
+        this.horizontalPump = false;
+      }
+
+      update(game) {
+        // Track whether hooked horizontally for double points
+        if (this.state === 'HOOKED') {
+          this.horizontalPump = (game.player.dir === 0 || game.player.dir === 2);
+        }
+
+        // Fire breath sequence
+        if (this.isFiring) {
+          this.fireProgress++;
+          if (this.fireProgress === 20) {
+            sound.playFire();
+          }
+
+          // Check fire flame hit against player
+          if (this.fireProgress > 20 && this.fireProgress < 50) {
+            const fireLength = (this.fireProgress - 20) * 1.5;
+            const fx = this.dir === 0 ? this.x + fireLength : this.x - fireLength;
+            if (Math.abs(fx - game.player.x) < 16 && Math.abs(this.y - game.player.y) < 8) {
+              game.killPlayer();
+            }
+          }
+
+          if (this.fireProgress >= 55) {
+            this.isFiring = false;
+            this.fireProgress = 0;
+            this.fireTimer = 200 + Math.random() * 180;
+          }
+          return;
+        }
+
+        // Check if aligned with player to breathe fire
+        if (this.state === 'PATROL' && Math.abs(this.y - game.player.y) < 8) {
+          this.fireTimer--;
+          if (this.fireTimer <= 0) {
+            this.isFiring = true;
+            this.dir = (game.player.x > this.x) ? 0 : 2;
+            this.fireProgress = 0;
+            return;
+          }
+        }
+
+        this.updateCommon(game);
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(Math.floor(this.x), Math.floor(this.y));
+
+        if (this.dir === 2) ctx.scale(-1, 1);
+
+        const scale = 1 + (this.inflateStage * 0.35);
+        ctx.scale(scale, scale);
+
+        if (this.state === 'GHOST') {
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(-5, -3, 4, 5);
+          ctx.fillRect(1, -3, 4, 5);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(-4, -1, 2, 3);
+          ctx.fillRect(2, -1, 2, 3);
+          ctx.restore();
+          return;
+        }
+
+        // Flashing before fire
+        const isWarning = this.isFiring && this.fireProgress < 20 && (Math.floor(this.fireProgress / 3) % 2 === 0);
+
+        // Green Dragon Body
+        ctx.fillStyle = isWarning ? '#ef4444' : '#16a34a';
+        ctx.fillRect(-6, -5, 12, 10);
+
+        // Red Wings / Spikes on back
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-8, -4, 3, 4);
+
+        // White Snout & Eye
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(3, -4, 3, 3);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(4, -3, 2, 2);
+
+        // Feet
+        ctx.fillStyle = '#ca8a04';
+        ctx.fillRect(-4, 5, 3, 2);
+        ctx.fillRect(2, 5, 3, 2);
+
+        // Draw Fire Stream
+        if (this.isFiring && this.fireProgress >= 20) {
+          const flameDist = Math.min(36, (this.fireProgress - 20) * 2.2);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(6, -4, flameDist, 7);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(10, -2, flameDist * 0.8, 4);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       6. ROCKS (FALL & CRUSH MECHANIC)
+       ========================================================================== */
+    class Rock {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.state = 'STATIC'; // STATIC, SHAKING, FALLING, CRUMBLED
+        this.shakeTimer = 0;
+        this.vy = 0;
+        this.destroyed = false;
+        this.w = 14;
+        this.h = 14;
+      }
+
+      update(game) {
+        if (this.destroyed) return;
+
+        if (this.state === 'STATIC') {
+          // If dirt directly beneath is dug out -> start trembling!
+          if (game.isGroundCarved(this.x, this.y)) {
+            this.state = 'SHAKING';
+            this.shakeTimer = 55; // Wobble for ~1 second
+          }
+        } else if (this.state === 'SHAKING') {
+          this.shakeTimer--;
+          if (this.shakeTimer <= 0) {
+            this.state = 'FALLING';
+            this.vy = 2.5;
+            sound.playRockFall();
+          }
+        } else if (this.state === 'FALLING') {
+          this.y += this.vy;
+          this.vy += 0.15; // Acceleration
+
+          // Squash enemies under rock
+          for (const enemy of game.enemies) {
+            if (enemy.state !== 'CRUSHED') {
+              if (Math.abs(this.x - enemy.x) < 10 && Math.abs(this.y - enemy.y) < 10) {
+                enemy.state = 'CRUSHED';
+                enemy.popped = true;
+                game.addScore(1000, this.x, this.y - 12);
+              }
+            }
+          }
+
+          // Squash player if beneath rock
+          if (Math.abs(this.x - game.player.x) < 9 && Math.abs(this.y - game.player.y) < 9) {
+            game.killPlayer();
+          }
+
+          // Check if rock hits solid ground or bottom of screen
+          if (game.isSolidDirt(this.x, this.y + 8) || this.y >= INTERNAL_H - 12) {
+            this.destroyed = true;
+            sound.playPop();
+            game.createExplosionParticles(this.x, this.y, '#b91c1c');
+          }
+        }
+      }
+
+      draw(ctx) {
+        if (this.destroyed) return;
+
+        ctx.save();
+        let drawX = this.x;
+        let drawY = this.y;
+
+        // Shake wobble animation
+        if (this.state === 'SHAKING') {
+          drawX += (Math.random() * 2 - 1) * 1.5;
+        }
+
+        ctx.translate(Math.floor(drawX), Math.floor(drawY));
+
+        // Brown/Orange Rock Boulders
+        ctx.fillStyle = '#991b1b';
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-4, -4, 7, 6);
+
+        ctx.fillStyle = '#fca5a5';
+        ctx.fillRect(-3, -4, 3, 2);
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       7. BONUS VEGETABLES (CARROT, TURNIP, PINEAPPLE)
+       ========================================================================== */
+    class BonusVegetable {
+      constructor(x, y, round) {
+        this.x = x;
+        this.y = y;
+        this.round = round;
+        this.points = 400 + (round * 200);
+        this.life = 400; // Timer to pick it up
+        this.collected = false;
+        this.expired = false;
+      }
+
+      update(game) {
+        this.life--;
+        if (this.life <= 0) {
+          this.expired = true;
+          return;
+        }
+
+        // Check player collection
+        const dist = Math.hypot(this.x - game.player.x, this.y - game.player.y);
+        if (dist < 10) {
+          this.collected = true;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(Math.floor(this.x), Math.floor(this.y));
+
+        // Carrot / Turnip sprite
+        ctx.fillStyle = '#ea580c'; // Carrot orange
+        ctx.beginPath();
+        ctx.moveTo(0, 5);
+        ctx.lineTo(-4, -2);
+        ctx.lineTo(4, -2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Green leafy top
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(-2, -5, 4, 3);
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       8. MAIN GAME LOOP INITIALIZATION
+       ========================================================================== */
+    const game = new DigDugGame();
+
+    function gameLoop() {
+      game.update();
+      game.draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = function() {
+      // Start loop on page ready
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
