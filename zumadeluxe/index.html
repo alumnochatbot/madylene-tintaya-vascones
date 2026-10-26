@@ -1,1 +1,1534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zuma Deluxe - Temple of the Sun</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Metamorphous&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body {
+      background-color: #0b0704;
+      font-family: 'Cinzel', serif;
+      overflow: hidden;
+    }
+    .stone-panel {
+      background: radial-gradient(circle at 50% 30%, #3a2a1d 0%, #1c130d 100%);
+      box-shadow: inset 0 2px 4px rgba(255,215,0,0.15), 0 8px 25px rgba(0,0,0,0.8);
+      border: 3px solid #634832;
+    }
+    .gold-glow {
+      text-shadow: 0 0 10px #ffb700, 0 0 20px #ff8c00;
+    }
+    .gold-border {
+      border: 2px solid #d4af37;
+    }
+    canvas {
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center p-0 m-0 bg-stone-950 text-amber-100 select-none">
 
+  <!-- Top Aztec HUD -->
+  <header class="w-full max-w-4xl px-3 py-1.5 flex items-center justify-between text-xs sm:text-sm font-bold z-20 stone-panel rounded-b-xl border-t-0 shadow-lg mb-1">
+    <!-- Lives & Level -->
+    <div class="flex items-center space-x-3 sm:space-x-4">
+      <div class="flex items-center space-x-1" id="lives-container" title="Vidas">
+        <!-- Frog life icons injected via JS -->
+      </div>
+      <div class="bg-black/50 px-2.5 py-1 rounded-md border border-amber-800/60">
+        <span class="text-amber-400">NIVEL:</span>
+        <span id="level-display" class="text-yellow-300 ml-1">1-1</span>
+      </div>
+    </div>
+
+    <!-- Zuma Bar / Progress -->
+    <div class="flex-1 mx-3 sm:mx-6 flex flex-col items-center max-w-xs sm:max-w-md">
+      <div class="w-full flex justify-between text-[10px] sm:text-xs text-amber-300 mb-0.5 font-bold">
+        <span id="zuma-status-text">ZUMA</span>
+        <span id="score-display" class="text-yellow-400 tracking-wider">000000</span>
+      </div>
+      <div class="w-full h-3.5 sm:h-4 bg-stone-900 rounded-full border border-yellow-600/60 p-0.5 overflow-hidden shadow-inner relative">
+        <div id="zuma-progress-bar" class="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-300 rounded-full transition-all duration-200" style="width: 0%"></div>
+        <div id="zuma-glow-banner" class="absolute inset-0 flex items-center justify-center text-[9px] font-black tracking-widest text-amber-950 opacity-0 transition-opacity uppercase">¡BARRA ZUMA LLENA!</div>
+      </div>
+    </div>
+
+    <!-- Actions / Audio / Menu -->
+    <div class="flex items-center space-x-2">
+      <button id="btn-sound" class="p-1.5 rounded-lg bg-amber-900/60 hover:bg-amber-800 border border-amber-600/50 text-amber-300 active:scale-95 transition" title="Activar/Desactivar Sonido">
+        <svg id="icon-sound-on" class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zm-2.5-1.23l-5 5H2v10h4.5l5 5V2z"/></svg>
+        <svg id="icon-sound-off" class="w-4 h-4 sm:w-5 sm:h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+      </button>
+      <button id="btn-pause" class="px-2.5 py-1 rounded-lg bg-yellow-700/80 hover:bg-yellow-600 border border-yellow-500 text-yellow-100 font-extrabold active:scale-95 transition text-xs sm:text-sm">
+        MENÚ
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="relative flex-1 w-full max-w-4xl max-h-[85vh] flex items-center justify-center p-1 overflow-hidden">
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" class="w-full h-full object-contain rounded-2xl shadow-2xl stone-panel border-4 border-amber-950"></canvas>
+
+    <!-- Swap Marble Helper Button (Mobile friendly) -->
+    <button id="btn-swap-mobile" class="sm:hidden absolute bottom-4 right-4 z-20 bg-amber-800/90 hover:bg-amber-700 border-2 border-yellow-400 text-yellow-200 rounded-full w-14 h-14 flex flex-col items-center justify-center shadow-lg active:scale-90 transition font-bold text-[10px]">
+      <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+      CAMBIAR
+    </button>
+
+    <!-- Overlay Modal: Pause / Level Complete / Game Over -->
+    <div id="game-modal" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-30 flex items-center justify-center hidden">
+      <div class="stone-panel p-6 sm:p-8 rounded-2xl max-w-md w-11/12 text-center border-4 border-yellow-600 shadow-2xl relative">
+        <div class="text-3xl sm:text-4xl font-extrabold text-amber-400 gold-glow mb-2" id="modal-title">ZUMA DELUXE</div>
+        <p class="text-amber-200 text-sm sm:text-base mb-6 font-semibold" id="modal-desc">Detén la marcha de las esferas sagradas antes de que alcancen el Ojo del Jaguar.</p>
+        
+        <div id="modal-stats" class="bg-black/60 p-3 rounded-xl border border-amber-800/60 mb-6 text-sm text-amber-200 space-y-1">
+          <div class="flex justify-between"><span>Puntuación:</span><span id="modal-score" class="font-bold text-yellow-400">0</span></div>
+          <div class="flex justify-between"><span>Mejor Combo:</span><span id="modal-combo" class="font-bold text-yellow-400">x0</span></div>
+          <div class="flex justify-between"><span>Nivel:</span><span id="modal-lvl" class="font-bold text-yellow-400">1</span></div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <button id="modal-btn-primary" class="w-full py-3 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 text-amber-950 font-black rounded-xl border-2 border-yellow-300 shadow-lg text-lg tracking-wide uppercase active:scale-95 transition">
+            JUGAR AHORA
+          </button>
+          <button id="modal-btn-restart" class="w-full py-2 bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold rounded-xl border border-stone-600 text-sm active:scale-95 transition">
+            REINICIAR NIVEL
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Controls help footer -->
+  <footer class="w-full max-w-4xl px-3 py-1 text-center text-[10px] sm:text-xs text-amber-400/80 flex items-center justify-around font-medium">
+    <span>🎯 <b>Clic / Toque:</b> Disparar esfera</span>
+    <span>🔄 <b>Clic Derecho / Barra Espacio:</b> Intercambiar esfera</span>
+    <span>💥 Conecta <b>3 o más</b> del mismo color</span>
+  </footer>
+
+  <script>
+    /* ==========================================================================
+       ZUMA DELUXE - TEMPLE OF THE SUN (Single-File Canvas Engine)
+       ========================================================================== */
+
+    // --- Audio Synthesizer (Zero External Dependencies) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playShoot() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(380, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+      playSwap() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.setValueAtTime(600, now + 0.05);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+      playClack() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      }
+      playPop(combo = 1) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const baseFreq = 300 + Math.min(combo * 80, 800);
+        
+        // Two-tone bell harmonic
+        [baseFreq, baseFreq * 1.5].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = idx === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + 0.18);
+          gain.gain.setValueAtTime(idx === 0 ? 0.35 : 0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        });
+      }
+      playRollMagnetic() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.linearRampToValueAtTime(320, now + 0.18);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      }
+      playZumaFanfare() {
+        if (this.muted || !this.ctx) return;
+        const notes = [440, 554, 659, 880];
+        notes.forEach((freq, i) => {
+          const now = this.ctx.currentTime + i * 0.08;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        });
+      }
+      playGameOver() {
+        if (this.muted || !this.ctx) return;
+        const notes = [350, 310, 260, 180];
+        notes.forEach((freq, i) => {
+          const now = this.ctx.currentTime + i * 0.15;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // --- Configuration & Constants ---
+    const BALL_RADIUS = 15;
+    const BALL_DIAMETER = BALL_RADIUS * 2;
+    const PROJECTILE_SPEED = 18;
+    const BASE_ROLL_SPEED = 0.85;
+    const REVERSE_PULL_SPEED = 6.0;
+
+    // Palette: Aztec Colors with distinct engraved Maya glyph symbols
+    const BALL_COLORS = [
+      { name: 'red', hex: '#e62e2d', light: '#ff6b6b', dark: '#8a0a0a', glyph: 'sun' },
+      { name: 'blue', hex: '#1e88e5', light: '#64b5f6', dark: '#0d47a1', glyph: 'water' },
+      { name: 'yellow', hex: '#fbc02d', light: '#fff59d', dark: '#f57f17', glyph: 'star' },
+      { name: 'green', hex: '#2e7d32', light: '#81c784', dark: '#1b5e20', glyph: 'quetzal' },
+      { name: 'purple', hex: '#8e24aa', light: '#ba68c8', dark: '#4a148c', glyph: 'eye' },
+      { name: 'white', hex: '#eceff1', light: '#ffffff', dark: '#78909c', glyph: 'moon' }
+    ];
+
+    // --- Uniform Arc-Length Path Generator ---
+    class SplineTrack {
+      constructor(canvasWidth, canvasHeight) {
+        this.w = canvasWidth;
+        this.h = canvasHeight;
+        this.points = [];
+        this.totalLength = 0;
+        this.buildTrack();
+      }
+
+      buildTrack() {
+        // Parametric spiral / S-curve reminiscent of classic Zuma stage 1 & 8
+        const cx = this.w * 0.5;
+        const cy = this.h * 0.48;
+        
+        // Define control anchor points that wind around the frog and end in the Sun Hole
+        const rawAnchors = [
+          { x: 0.05, y: -0.05 }, // Entrance off-screen top-left
+          { x: 0.10, y: 0.28 },
+          { x: 0.12, y: 0.65 },
+          { x: 0.22, y: 0.88 },
+          { x: 0.50, y: 0.92 },
+          { x: 0.80, y: 0.86 },
+          { x: 0.92, y: 0.62 },
+          { x: 0.88, y: 0.28 },
+          { x: 0.72, y: 0.12 },
+          { x: 0.48, y: 0.10 },
+          { x: 0.32, y: 0.22 },
+          { x: 0.28, y: 0.45 },
+          { x: 0.35, y: 0.66 },
+          { x: 0.52, y: 0.72 },
+          { x: 0.68, y: 0.62 },
+          { x: 0.70, y: 0.42 },
+          { x: 0.58, y: 0.28 }, // Ends at Golden Skull Hole!
+        ];
+
+        // Convert anchors to canvas coords
+        const anchors = rawAnchors.map(p => ({ x: p.x * this.w, y: p.y * this.h }));
+
+        // Generate fine Catmull-Rom interpolated samples
+        const fineSamples = [];
+        const numSegments = anchors.length - 3;
+        const stepsPerSeg = 80;
+
+        for (let i = 0; i < anchors.length - 1; i++) {
+          const p0 = anchors[Math.max(0, i - 1)];
+          const p1 = anchors[i];
+          const p2 = anchors[Math.min(anchors.length - 1, i + 1)];
+          const p3 = anchors[Math.min(anchors.length - 1, i + 2)];
+
+          for (let s = 0; s < stepsPerSeg; s++) {
+            const t = s / stepsPerSeg;
+            const t2 = t * t;
+            const t3 = t2 * t;
+
+            // Catmull-Rom formulation
+            const x = 0.5 * ((2 * p1.x) +
+              (-p0.x + p2.x) * t +
+              (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+              (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+            const y = 0.5 * ((2 * p1.y) +
+              (-p0.y + p2.y) * t +
+              (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+              (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+            fineSamples.push({ x, y });
+          }
+        }
+
+        // Resample with constant arc-length (1 px step)
+        let accumulated = 0;
+        this.points = [{ x: fineSamples[0].x, y: fineSamples[0].y, dist: 0, angle: 0 }];
+
+        for (let i = 1; i < fineSamples.length; i++) {
+          const dx = fineSamples[i].x - fineSamples[i - 1].x;
+          const dy = fineSamples[i].y - fineSamples[i - 1].y;
+          const segDist = Math.hypot(dx, dy);
+          if (segDist >= 2.0) {
+            accumulated += segDist;
+            const angle = Math.atan2(dy, dx);
+            this.points.push({
+              x: fineSamples[i].x,
+              y: fineSamples[i].y,
+              dist: accumulated,
+              angle: angle
+            });
+          }
+        }
+        this.totalLength = accumulated;
+      }
+
+      getPointAtDistance(d) {
+        if (d <= 0) {
+          const p0 = this.points[0];
+          return { x: p0.x, y: p0.y, angle: p0.angle };
+        }
+        if (d >= this.totalLength) {
+          const pEnd = this.points[this.points.length - 1];
+          return { x: pEnd.x, y: pEnd.y, angle: pEnd.angle };
+        }
+
+        // Binary search for exact distance
+        let low = 0, high = this.points.length - 1;
+        while (low <= high) {
+          const mid = (low + high) >> 1;
+          if (this.points[mid].dist < d) low = mid + 1;
+          else high = mid - 1;
+        }
+
+        const idx = Math.max(1, low);
+        const pA = this.points[idx - 1];
+        const pB = this.points[idx];
+        const span = pB.dist - pA.dist;
+        const t = span > 0 ? (d - pA.dist) / span : 0;
+
+        return {
+          x: pA.x + (pB.x - pA.x) * t,
+          y: pA.y + (pB.y - pA.y) * t,
+          angle: pA.angle + (pB.angle - pA.angle) * t
+        };
+      }
+
+      // Draw carved stone trench under marbles
+      drawTrackTrench(ctx) {
+        ctx.save();
+        // Dark deep trench shadow
+        ctx.beginPath();
+        for (let i = 0; i < this.points.length; i++) {
+          const p = this.points[i];
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = BALL_DIAMETER + 14;
+        ctx.strokeStyle = '#0d0906';
+        ctx.stroke();
+
+        // Stone borders with carved rim
+        ctx.lineWidth = BALL_DIAMETER + 8;
+        ctx.strokeStyle = '#251911';
+        ctx.stroke();
+
+        // Interior canal
+        ctx.lineWidth = BALL_DIAMETER + 2;
+        ctx.strokeStyle = '#140d09';
+        ctx.stroke();
+
+        // Central grooved line
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#0a0604';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // The Golden Skull / Sun Abyss at end of track
+      drawGoldenHole(ctx, dangerRatio = 0) {
+        const endPt = this.points[this.points.length - 1];
+        ctx.save();
+        ctx.translate(endPt.x, endPt.y);
+
+        // Golden Sun Rays / Idol
+        const rays = 12;
+        const outerR = 38 + Math.sin(Date.now() * 0.006) * 3;
+        const innerR = 24;
+
+        ctx.fillStyle = dangerRatio > 0.5 ? '#b91c1c' : '#d97706';
+        ctx.beginPath();
+        for (let i = 0; i < rays * 2; i++) {
+          const rad = (i * Math.PI) / rays;
+          const r = i % 2 === 0 ? outerR : innerR;
+          const rx = Math.cos(rad) * r;
+          const ry = Math.sin(rad) * r;
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#fef08a';
+        ctx.stroke();
+
+        // Danger Pulsating Aura
+        if (dangerRatio > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 32 + dangerRatio * 15, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + Math.sin(Date.now() * 0.015) * 0.3})`;
+          ctx.lineWidth = 4;
+          ctx.stroke();
+        }
+
+        // Inner Abyss Skull Hole
+        const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 24);
+        grad.addColorStop(0, '#000000');
+        grad.addColorStop(0.7, '#110502');
+        grad.addColorStop(1, '#78350f');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Aztec Jaguar Teeth inside hole
+        ctx.fillStyle = '#fbbf24';
+        for (let i = 0; i < 8; i++) {
+          const ang = (i * Math.PI * 2) / 8;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ang) * 22, Math.sin(ang) * 22);
+          ctx.lineTo(Math.cos(ang + 0.15) * 16, Math.sin(ang + 0.15) * 16);
+          ctx.lineTo(Math.cos(ang + 0.3) * 22, Math.sin(ang + 0.3) * 22);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- Particle Effects System ---
+    class ParticleSystem {
+      constructor() {
+        this.particles = [];
+        this.textPopups = [];
+      }
+
+      spawnPop(x, y, colorHex) {
+        // Shards & Sparks
+        for (let i = 0; i < 18; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2 + Math.random() * 5.5;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0,
+            decay: 0.025 + Math.random() * 0.03,
+            size: 3 + Math.random() * 4,
+            color: colorHex,
+            isSparkle: Math.random() > 0.4
+          });
+        }
+      }
+
+      spawnScore(x, y, text, color = '#fef08a') {
+        this.textPopups.push({
+          x, y,
+          text,
+          color,
+          life: 1.0,
+          vy: -1.2
+        });
+      }
+
+      update() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.94;
+          p.vy *= 0.94;
+          p.life -= p.decay;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = this.textPopups.length - 1; i >= 0; i--) {
+          const t = this.textPopups[i];
+          t.y += t.vy;
+          t.life -= 0.02;
+          if (t.life <= 0) this.textPopups.splice(i, 1);
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        // Draw Particles
+        for (const p of this.particles) {
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          if (p.isSparkle) {
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Draw Score Floaters
+        ctx.save();
+        ctx.font = '900 16px "Cinzel", serif';
+        ctx.textAlign = 'center';
+        for (const t of this.textPopups) {
+          ctx.globalAlpha = Math.max(0, t.life);
+          ctx.fillStyle = t.color;
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 4;
+          ctx.fillText(t.text, t.x, t.y);
+        }
+        ctx.restore();
+      }
+    }
+
+    // --- Stone Frog Shooter Component ---
+    class ZumaFrog {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.angle = 0;
+        this.currentBall = null;
+        this.nextBall = null;
+        this.scale = 1.0;
+        this.recoil = 0;
+      }
+
+      initBalls(colorCount) {
+        this.currentBall = this.getRandomColor(colorCount);
+        this.nextBall = this.getRandomColor(colorCount);
+      }
+
+      getRandomColor(count) {
+        const pool = BALL_COLORS.slice(0, count);
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      swap() {
+        sound.playSwap();
+        const temp = this.currentBall;
+        this.currentBall = this.nextBall;
+        this.nextBall = temp;
+      }
+
+      shoot(colorCount) {
+        if (!this.currentBall) return null;
+        sound.playShoot();
+        this.recoil = 6;
+
+        // Position at frog's mouth
+        const mouthDist = 32;
+        const px = this.x + Math.cos(this.angle) * mouthDist;
+        const py = this.y + Math.sin(this.angle) * mouthDist;
+
+        const projectile = {
+          x: px,
+          y: py,
+          vx: Math.cos(this.angle) * PROJECTILE_SPEED,
+          vy: Math.sin(this.angle) * PROJECTILE_SPEED,
+          color: this.currentBall,
+          radius: BALL_RADIUS
+        };
+
+        // Reload from next
+        this.currentBall = this.nextBall;
+        this.nextBall = this.getRandomColor(colorCount);
+
+        return projectile;
+      }
+
+      update(pointerX, pointerY) {
+        const dx = pointerX - this.x;
+        const dy = pointerY - this.y;
+        this.angle = Math.atan2(dy, dx);
+        if (this.recoil > 0) this.recoil *= 0.82;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // Recoil offset
+        const rOffset = -this.recoil;
+
+        // Shadow under the frog
+        ctx.beginPath();
+        ctx.ellipse(rOffset - 2, 4, 46, 42, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fill();
+
+        // --- Mayan Stone Frog Pedestal & Legs ---
+        ctx.fillStyle = '#4a3f35';
+        ctx.strokeStyle = '#27201b';
+        ctx.lineWidth = 3;
+
+        // Back Feet
+        [-32, 32].forEach(sideY => {
+          ctx.beginPath();
+          ctx.ellipse(-20 + rOffset, sideY, 15, 10, sideY > 0 ? 0.3 : -0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        // Front Feet
+        [-34, 34].forEach(sideY => {
+          ctx.beginPath();
+          ctx.ellipse(14 + rOffset, sideY, 14, 9, sideY > 0 ? -0.3 : 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        // Frog Body (Jade Stone Idol)
+        const bodyGrad = ctx.createRadialGradient(rOffset - 4, -4, 5, rOffset, 0, 42);
+        bodyGrad.addColorStop(0, '#5f7556');
+        bodyGrad.addColorStop(0.5, '#3e5237');
+        bodyGrad.addColorStop(1, '#253320');
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.ellipse(rOffset, 0, 38, 32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1a2417';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Mayan Carved Glyphs / Armor on Back
+        ctx.strokeStyle = '#8fa37d';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(rOffset - 12, 0, 16, -Math.PI * 0.6, Math.PI * 0.6);
+        ctx.stroke();
+
+        // Next Marble slot on frog's back
+        if (this.nextBall) {
+          drawSingleMarble(ctx, rOffset - 16, 0, this.nextBall, 10);
+          ctx.strokeStyle = '#d4af37';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(rOffset - 22, -6, 12, 12);
+        }
+
+        // Frog Eyes with Ruby glow
+        [-16, 16].forEach(eyeY => {
+          ctx.fillStyle = '#2f3d2a';
+          ctx.beginPath();
+          ctx.arc(16 + rOffset, eyeY, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Golden Iris & Glowing Ruby pupil
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(18 + rOffset, eyeY, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(20 + rOffset, eyeY, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Frog Mouth / Golden Cannon Rim
+        ctx.fillStyle = '#854d0e';
+        ctx.beginPath();
+        ctx.ellipse(30 + rOffset, 0, 14, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Current Marble in Mouth ready to fire!
+        if (this.currentBall) {
+          drawSingleMarble(ctx, 30 + rOffset, 0, this.currentBall, BALL_RADIUS);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- Marble Graphic Renderer (Engraved Aztec Stone/Gem Spheres) ---
+    function drawSingleMarble(ctx, x, y, ballColor, radius = BALL_RADIUS) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Radial 3D Sphere Highlight
+      const grad = ctx.createRadialGradient(-radius * 0.35, -radius * 0.35, radius * 0.1, 0, 0, radius);
+      grad.addColorStop(0, ballColor.light);
+      grad.addColorStop(0.35, ballColor.hex);
+      grad.addColorStop(0.85, ballColor.dark);
+      grad.addColorStop(1, '#050505');
+
+      // Drop shadow & circle
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      // Engraved Symbol / Glyph in Center (Aesthetic & Colorblind accessible)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      const s = radius * 0.45;
+
+      switch (ballColor.glyph) {
+        case 'sun': // Red: Aztec Sun
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          for (let a = 0; a < 4; a++) {
+            const rad = (a * Math.PI) / 2;
+            ctx.moveTo(Math.cos(rad) * s * 0.7, Math.sin(rad) * s * 0.7);
+            ctx.lineTo(Math.cos(rad) * s * 1.2, Math.sin(rad) * s * 1.2);
+          }
+          ctx.stroke();
+          break;
+
+        case 'water': // Blue: Spiral Wave
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.6, 0, Math.PI * 1.5);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'star': // Yellow: 4-pointed Star
+          ctx.beginPath();
+          ctx.moveTo(0, -s);
+          ctx.lineTo(s * 0.3, -s * 0.3);
+          ctx.lineTo(s, 0);
+          ctx.lineTo(s * 0.3, s * 0.3);
+          ctx.lineTo(0, s);
+          ctx.lineTo(-s * 0.3, s * 0.3);
+          ctx.lineTo(-s, 0);
+          ctx.lineTo(-s * 0.3, -s * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          break;
+
+        case 'quetzal': // Green: Feathered Leaf / Triangle
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 0.9);
+          ctx.lineTo(s * 0.8, s * 0.7);
+          ctx.lineTo(-s * 0.8, s * 0.7);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'eye': // Purple: Diamond Eye
+          ctx.beginPath();
+          ctx.moveTo(-s, 0);
+          ctx.lineTo(0, -s * 0.65);
+          ctx.lineTo(s, 0);
+          ctx.lineTo(0, s * 0.65);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'moon': // White: Skull / Moon Crescent
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.8, 0.4, Math.PI * 1.6);
+          ctx.stroke();
+          break;
+      }
+
+      // Glass specular highlight
+      ctx.beginPath();
+      ctx.ellipse(-radius * 0.35, -radius * 0.35, radius * 0.3, radius * 0.16, -Math.PI / 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // --- Core Zuma Engine ---
+    class ZumaGame {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = new ParticleSystem();
+
+        // Level config
+        this.level = 1;
+        this.stage = 1;
+        this.score = 0;
+        this.lives = 3;
+        this.maxLives = 3;
+        this.bestCombo = 0;
+
+        // Zuma bar progress
+        this.zumaPoints = 0;
+        this.zumaTarget = 1500;
+        this.isZumaActive = false; // When true, no new balls spawn from the start
+
+        // Chain of marbles along the track
+        // Each element: { dist: Number, color: ColorObj, id: String }
+        this.chain = [];
+        this.projectiles = [];
+        this.ballsToSpawn = 50;
+
+        // Track and frog
+        this.track = null;
+        this.frog = null;
+
+        // Pointer state
+        this.pointer = { x: 0, y: 0 };
+        this.state = 'TITLE'; // 'PLAYING', 'PAUSED', 'LEVEL_WIN', 'GAME_OVER', 'TITLE'
+
+        // Animation timing
+        this.lastTime = performance.now();
+
+        // DOM elements
+        this.domScore = document.getElementById('score-display');
+        this.domLevel = document.getElementById('level-display');
+        this.domZumaBar = document.getElementById('zuma-progress-bar');
+        this.domZumaGlow = document.getElementById('zuma-glow-banner');
+        this.domZumaStatus = document.getElementById('zuma-status-text');
+        this.domLives = document.getElementById('lives-container');
+        this.modal = document.getElementById('game-modal');
+        this.modalTitle = document.getElementById('modal-title');
+        this.modalDesc = document.getElementById('modal-desc');
+        this.modalScore = document.getElementById('modal-score');
+        this.modalCombo = document.getElementById('modal-combo');
+        this.modalLvl = document.getElementById('modal-lvl');
+        this.btnPrimary = document.getElementById('modal-btn-primary');
+        this.btnRestart = document.getElementById('modal-btn-restart');
+
+        this.init();
+      }
+
+      init() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // Controls
+        this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        this.canvas.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.swapBall();
+        });
+
+        // Touch support
+        this.canvas.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          if (e.touches.length > 0) {
+            const rect = this.canvas.getBoundingClientRect();
+            this.pointer.x = (e.touches[0].clientX - rect.left) * (this.canvas.width / rect.width);
+            this.pointer.y = (e.touches[0].clientY - rect.top) * (this.canvas.height / rect.height);
+          }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchstart', (e) => {
+          sound.init();
+          if (e.touches.length > 0) {
+            const rect = this.canvas.getBoundingClientRect();
+            this.pointer.x = (e.touches[0].clientX - rect.left) * (this.canvas.width / rect.width);
+            this.pointer.y = (e.touches[0].clientY - rect.top) * (this.canvas.height / rect.height);
+          }
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          this.shootBall();
+        }, { passive: false });
+
+        // Keyboard controls (Space to swap)
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') {
+            e.preventDefault();
+            this.swapBall();
+          } else if (e.key === 'p' || e.key === 'P') {
+            this.togglePause();
+          }
+        });
+
+        // UI Buttons
+        document.getElementById('btn-swap-mobile').addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.swapBall();
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', () => {
+          this.togglePause();
+        });
+
+        const btnSound = document.getElementById('btn-sound');
+        const iconOn = document.getElementById('icon-sound-on');
+        const iconOff = document.getElementById('icon-sound-off');
+        btnSound.addEventListener('click', () => {
+          sound.init();
+          sound.muted = !sound.muted;
+          iconOn.classList.toggle('hidden', sound.muted);
+          iconOff.classList.toggle('hidden', !sound.muted);
+        });
+
+        this.btnPrimary.addEventListener('click', () => {
+          sound.init();
+          if (this.state === 'TITLE' || this.state === 'GAME_OVER') {
+            this.startNewGame();
+          } else if (this.state === 'PAUSED') {
+            this.resumeGame();
+          } else if (this.state === 'LEVEL_WIN') {
+            this.nextLevel();
+          }
+        });
+
+        this.btnRestart.addEventListener('click', () => {
+          sound.init();
+          this.startLevel(this.level);
+        });
+
+        this.updateLivesHUD();
+        this.showModal('ZUMA DELUXE', 'Templo del Sol Maya', 'JUGAR');
+
+        // Main game loop
+        requestAnimationFrame((t) => this.gameLoop(t));
+      }
+
+      resize() {
+        const container = this.canvas.parentElement;
+        const rect = container.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Aspect ratio 4:3 or responsive fit
+        const w = Math.floor(rect.width);
+        const h = Math.floor(rect.height);
+
+        this.canvas.width = w * dpr;
+        this.canvas.height = h * dpr;
+        this.ctx.scale(dpr, dpr);
+
+        this.logicalWidth = w;
+        this.logicalHeight = h;
+
+        // Rebuild track & reposition frog
+        this.track = new SplineTrack(w, h);
+        const frogX = w * 0.52;
+        const frogY = h * 0.45;
+
+        if (!this.frog) {
+          this.frog = new ZumaFrog(frogX, frogY);
+          this.frog.initBalls(this.getColorCount());
+        } else {
+          this.frog.x = frogX;
+          this.frog.y = frogY;
+        }
+      }
+
+      getColorCount() {
+        // Level 1: 4 colors; Level 2: 5 colors; Level 3+: 6 colors
+        if (this.level === 1) return 4;
+        if (this.level === 2) return 5;
+        return 6;
+      }
+
+      startNewGame() {
+        this.score = 0;
+        this.lives = this.maxLives;
+        this.level = 1;
+        this.bestCombo = 0;
+        this.startLevel(1);
+      }
+
+      startLevel(lvl) {
+        this.level = lvl;
+        this.isZumaActive = false;
+        this.zumaPoints = 0;
+        this.zumaTarget = 1200 + lvl * 400;
+        this.ballsToSpawn = 45 + lvl * 15;
+        this.chain = [];
+        this.projectiles = [];
+        this.frog.initBalls(this.getColorCount());
+        this.state = 'PLAYING';
+        this.hideModal();
+        this.updateHUD();
+      }
+
+      nextLevel() {
+        this.startLevel(this.level + 1);
+      }
+
+      togglePause() {
+        if (this.state === 'PLAYING') {
+          this.state = 'PAUSED';
+          this.showModal('PAUSA', 'El templo aguarda tu regreso.', 'CONTINUAR');
+        } else if (this.state === 'PAUSED') {
+          this.resumeGame();
+        }
+      }
+
+      resumeGame() {
+        this.state = 'PLAYING';
+        this.hideModal();
+      }
+
+      showModal(title, desc, btnText) {
+        this.modalTitle.innerText = title;
+        this.modalDesc.innerText = desc;
+        this.btnPrimary.innerText = btnText;
+        this.modalScore.innerText = this.score.toLocaleString();
+        this.modalCombo.innerText = `x${this.bestCombo}`;
+        this.modalLvl.innerText = `${this.level}`;
+        this.modal.classList.remove('hidden');
+      }
+
+      hideModal() {
+        this.modal.classList.add('hidden');
+      }
+
+      updateLivesHUD() {
+        this.domLives.innerHTML = '';
+        for (let i = 0; i < this.lives; i++) {
+          const frogSvg = `
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6zm4 4h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>`;
+          this.domLives.innerHTML += frogSvg;
+        }
+      }
+
+      updateHUD() {
+        this.domScore.innerText = this.score.toString().padStart(6, '0');
+        this.domLevel.innerText = `1-${this.level}`;
+        const pct = Math.min(100, Math.floor((this.zumaPoints / this.zumaTarget) * 100));
+        this.domZumaBar.style.width = `${pct}%`;
+
+        if (this.isZumaActive) {
+          this.domZumaGlow.style.opacity = '1';
+          this.domZumaStatus.innerText = '¡ZUMA!';
+          this.domZumaStatus.className = 'text-yellow-300 animate-pulse font-black';
+        } else {
+          this.domZumaGlow.style.opacity = '0';
+          this.domZumaStatus.innerText = 'ZUMA';
+          this.domZumaStatus.className = 'text-amber-300';
+        }
+        this.updateLivesHUD();
+      }
+
+      onMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.pointer.x = (e.clientX - rect.left) * (this.logicalWidth / rect.width);
+        this.pointer.y = (e.clientY - rect.top) * (this.logicalHeight / rect.height);
+      }
+
+      onMouseDown(e) {
+        sound.init();
+        if (e.button === 0) {
+          this.shootBall();
+        } else if (e.button === 2) {
+          this.swapBall();
+        }
+      }
+
+      swapBall() {
+        if (this.state !== 'PLAYING') return;
+        this.frog.swap();
+      }
+
+      shootBall() {
+        if (this.state !== 'PLAYING') return;
+        const proj = this.frog.shoot(this.getColorCount());
+        if (proj) {
+          this.projectiles.push(proj);
+        }
+      }
+
+      // --- Insertion and Matching Engine ---
+      insertProjectileIntoChain(proj, hitIndex, hitDist) {
+        const hitBall = this.chain[hitIndex];
+        sound.playClack();
+
+        // Determine if projectile lands ahead or behind the hit ball
+        const trackPos = this.track.getPointAtDistance(hitBall.dist);
+        const tangentX = Math.cos(trackPos.angle);
+        const tangentY = Math.sin(trackPos.angle);
+        const toProjX = proj.x - trackPos.x;
+        const toProjY = proj.y - trackPos.y;
+        const dot = toProjX * tangentX + toProjY * tangentY;
+
+        let insertIdx = hitIndex;
+        let newDist = hitBall.dist;
+
+        if (dot >= 0) {
+          // In front (further along path)
+          insertIdx = hitIndex + 1;
+          newDist = hitBall.dist + BALL_DIAMETER;
+        } else {
+          // Behind
+          insertIdx = hitIndex;
+          newDist = Math.max(0, hitBall.dist - BALL_DIAMETER);
+        }
+
+        const newBall = {
+          dist: newDist,
+          color: proj.color,
+          id: Math.random().toString(36).substr(2, 9),
+          popScale: 1.0
+        };
+
+        this.chain.splice(insertIdx, 0, newBall);
+
+        // Adjust positions of neighboring balls to avoid overlap
+        this.resolveOverlaps(insertIdx);
+
+        // Check for matches starting from the inserted index
+        this.checkMatchesAt(insertIdx, 1);
+      }
+
+      resolveOverlaps(pivotIdx) {
+        // Push balls ahead forward
+        for (let i = pivotIdx + 1; i < this.chain.length; i++) {
+          const expected = this.chain[i - 1].dist + BALL_DIAMETER;
+          if (this.chain[i].dist < expected) {
+            this.chain[i].dist = expected;
+          }
+        }
+      }
+
+      checkMatchesAt(index, comboLevel = 1) {
+        if (index < 0 || index >= this.chain.length) return false;
+
+        const targetColor = this.chain[index].color.name;
+        let start = index;
+        let end = index;
+
+        // Walk backwards
+        while (start > 0 && this.chain[start - 1].color.name === targetColor) {
+          start--;
+        }
+        // Walk forwards
+        while (end < this.chain.length - 1 && this.chain[end + 1].color.name === targetColor) {
+          end++;
+        }
+
+        const matchCount = end - start + 1;
+
+        if (matchCount >= 3) {
+          sound.playPop(comboLevel);
+          if (comboLevel > this.bestCombo) this.bestCombo = comboLevel;
+
+          const pointsGained = matchCount * 100 * comboLevel;
+          this.score += pointsGained;
+          this.zumaPoints += pointsGained;
+
+          // Check if Zuma activated
+          if (!this.isZumaActive && this.zumaPoints >= this.zumaTarget) {
+            this.isZumaActive = true;
+            sound.playZumaFanfare();
+            const centerPt = this.track.getPointAtDistance(this.track.totalLength * 0.5);
+            this.particles.spawnScore(centerPt.x, centerPt.y - 40, "¡ZUMA!", '#fde047');
+          }
+
+          // Visual explosions & floating points
+          for (let i = start; i <= end; i++) {
+            const b = this.chain[i];
+            const pt = this.track.getPointAtDistance(b.dist);
+            this.particles.spawnPop(pt.x, pt.y, b.color.hex);
+          }
+
+          const midBall = this.chain[Math.floor((start + end) / 2)];
+          const midPt = this.track.getPointAtDistance(midBall.dist);
+          const comboText = comboLevel > 1 ? `+${pointsGained} (COMBO x${comboLevel})` : `+${pointsGained}`;
+          this.particles.spawnScore(midPt.x, midPt.y - 15, comboText, comboLevel > 1 ? '#ffb703' : '#fef08a');
+
+          // Remove the matched balls
+          this.chain.splice(start, matchCount);
+
+          // Mark gap for magnetic collapse if balls on both sides share the same color!
+          if (start > 0 && start < this.chain.length) {
+            const leftBall = this.chain[start - 1];
+            const rightBall = this.chain[start];
+
+            if (leftBall.color.name === rightBall.color.name) {
+              sound.playRollMagnetic();
+              // Tag the tail segment to pull backwards rapidly
+              this.pendingComboIndex = start - 1;
+              this.pendingComboLevel = comboLevel + 1;
+            }
+          }
+
+          this.updateHUD();
+          return true;
+        }
+
+        return false;
+      }
+
+      // --- Game Loop Update & Render ---
+      update(dt) {
+        if (this.state !== 'PLAYING') return;
+
+        this.particles.update();
+        this.frog.update(this.pointer.x, this.pointer.y);
+
+        // 1. Spawn new balls into track from tail if not Zuma
+        if (!this.isZumaActive && this.ballsToSpawn > 0) {
+          if (this.chain.length === 0) {
+            this.spawnBallAtTail();
+          } else {
+            const tailBall = this.chain[0];
+            if (tailBall.dist >= BALL_DIAMETER) {
+              this.spawnBallAtTail();
+            }
+          }
+        }
+
+        // 2. Advance the chain along the track
+        const rollSpeed = BASE_ROLL_SPEED + (this.level * 0.12);
+
+        // Advance tail push
+        for (let i = 0; i < this.chain.length; i++) {
+          if (i === 0) {
+            this.chain[0].dist += rollSpeed;
+          } else {
+            // Push if in contact
+            const prev = this.chain[i - 1];
+            const curr = this.chain[i];
+            if (curr.dist < prev.dist + BALL_DIAMETER) {
+              curr.dist = prev.dist + BALL_DIAMETER;
+            }
+          }
+        }
+
+        // 3. Magnetic pull on gaps with matching colors
+        if (this.pendingComboIndex !== undefined && this.pendingComboIndex < this.chain.length - 1) {
+          const lead = this.chain[this.pendingComboIndex];
+          const tail = this.chain[this.pendingComboIndex + 1];
+
+          // Distance between centers
+          const gap = tail.dist - lead.dist;
+          if (gap > BALL_DIAMETER) {
+            // Pull tail segment backwards
+            const pullStep = Math.min(gap - BALL_DIAMETER, REVERSE_PULL_SPEED);
+            for (let j = this.pendingComboIndex + 1; j < this.chain.length; j++) {
+              this.chain[j].dist -= pullStep;
+            }
+          } else {
+            // Gap closed! Snap and trigger combo check
+            tail.dist = lead.dist + BALL_DIAMETER;
+            const checkIdx = this.pendingComboIndex;
+            const comboLvl = this.pendingComboLevel || 2;
+            this.pendingComboIndex = undefined;
+            this.pendingComboLevel = undefined;
+            sound.playClack();
+            this.checkMatchesAt(checkIdx, comboLvl);
+          }
+        }
+
+        // 4. Update Projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // Check bounds
+          if (p.x < -40 || p.x > this.logicalWidth + 40 || p.y < -40 || p.y > this.logicalHeight + 40) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+
+          // Check collision against all balls on track
+          let collisionFound = false;
+          for (let j = 0; j < this.chain.length; j++) {
+            const b = this.chain[j];
+            const bPos = this.track.getPointAtDistance(b.dist);
+            const distSq = (p.x - bPos.x) ** 2 + (p.y - bPos.y) ** 2;
+
+            if (distSq <= (BALL_RADIUS + p.radius) ** 2) {
+              // Hit!
+              this.insertProjectileIntoChain(p, j, b.dist);
+              this.projectiles.splice(i, 1);
+              collisionFound = true;
+              break;
+            }
+          }
+        }
+
+        // 5. Check Danger & Loss condition (ball reaching the skull hole)
+        if (this.chain.length > 0) {
+          const headBall = this.chain[this.chain.length - 1];
+          if (headBall.dist >= this.track.totalLength - 10) {
+            this.onPlayerDeath();
+            return;
+          }
+        }
+
+        // 6. Check Win condition (Zuma active and all balls cleared)
+        if (this.isZumaActive && this.chain.length === 0) {
+          this.onLevelWin();
+          return;
+        }
+      }
+
+      spawnBallAtTail() {
+        const color = BALL_COLORS[Math.floor(Math.random() * this.getColorCount())];
+        this.chain.unshift({
+          dist: 0,
+          color: color,
+          id: Math.random().toString(36).substr(2, 9),
+          popScale: 1.0
+        });
+        this.ballsToSpawn--;
+      }
+
+      onPlayerDeath() {
+        sound.playGameOver();
+        this.lives--;
+        this.updateHUD();
+
+        if (this.lives <= 0) {
+          this.state = 'GAME_OVER';
+          this.showModal('FIN DE LA PARTIDA', 'El Ojo del Jaguar ha devorado el Templo sagrado.', 'INTENTAR DE NUEVO');
+        } else {
+          this.state = 'PAUSED';
+          this.showModal('¡VIDA PERDIDA!', `Te quedan ${this.lives} ${this.lives === 1 ? 'vida' : 'vidas'}. ¡Mantén la concentración!`, 'REINTENTAR');
+          this.startLevel(this.level);
+        }
+      }
+
+      onLevelWin() {
+        sound.playZumaFanfare();
+        this.state = 'LEVEL_WIN';
+        this.score += 2000 * this.level;
+        this.updateHUD();
+        this.showModal(`¡NIVEL 1-${this.level} COMPLETADO!`, 'Has apaciguado a los dioses del Templo. ¡Prepárate para el siguiente desafío!', 'SIGUIENTE NIVEL');
+      }
+
+      draw() {
+        this.ctx.clearRect(0, 0, this.logicalWidth, this.logicalHeight);
+
+        // 1. Aztec Temple Floor Texture
+        this.drawTempleBackground(this.ctx);
+
+        // 2. Track canal / stone trench
+        if (this.track) {
+          this.track.drawTrackTrench(this.ctx);
+
+          // Calculate danger ratio based on closest ball to skull
+          let danger = 0;
+          if (this.chain.length > 0) {
+            const headDist = this.chain[this.chain.length - 1].dist;
+            danger = Math.max(0, (headDist - (this.track.totalLength * 0.75)) / (this.track.totalLength * 0.25));
+          }
+
+          // Golden Skull Abyss at track end
+          this.track.drawGoldenHole(this.ctx, danger);
+        }
+
+        // 3. Chain Balls
+        for (let i = 0; i < this.chain.length; i++) {
+          const ball = this.chain[i];
+          const pos = this.track.getPointAtDistance(ball.dist);
+          drawSingleMarble(this.ctx, pos.x, pos.y, ball.color, BALL_RADIUS);
+        }
+
+        // 4. Projectiles in Flight
+        for (const p of this.projectiles) {
+          // Trail effect
+          this.ctx.save();
+          this.ctx.beginPath();
+          this.ctx.arc(p.x - p.vx * 0.5, p.y - p.vy * 0.5, p.radius * 0.6, 0, Math.PI * 2);
+          this.ctx.fillStyle = p.color.light;
+          this.ctx.globalAlpha = 0.4;
+          this.ctx.fill();
+          this.ctx.restore();
+
+          drawSingleMarble(this.ctx, p.x, p.y, p.color, p.radius);
+        }
+
+        // 5. Zuma Frog Idol
+        if (this.frog) {
+          this.frog.draw(this.ctx);
+        }
+
+        // 6. Particles & Floating Scores
+        this.particles.draw(this.ctx);
+
+        // 7. Aim Guide Laser / Dots
+        if (this.frog && this.state === 'PLAYING') {
+          this.drawAimGuide(this.ctx);
+        }
+      }
+
+      drawAimGuide(ctx) {
+        ctx.save();
+        const startX = this.frog.x + Math.cos(this.frog.angle) * 45;
+        const startY = this.frog.y + Math.sin(this.frog.angle) * 45;
+        
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.25)';
+        ctx.setLineDash([4, 8]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + Math.cos(this.frog.angle) * 140, startY + Math.sin(this.frog.angle) * 140);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawTempleBackground(ctx) {
+        ctx.save();
+        // Deep stone slab mosaic
+        const grad = ctx.createRadialGradient(
+          this.logicalWidth * 0.5, this.logicalHeight * 0.5, 50,
+          this.logicalWidth * 0.5, this.logicalHeight * 0.5, this.logicalWidth * 0.7
+        );
+        grad.addColorStop(0, '#2c1e14');
+        grad.addColorStop(0.5, '#1e140d');
+        grad.addColorStop(1, '#0c0704');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
+
+        // Ancient Aztec tile grid lines
+        ctx.strokeStyle = 'rgba(74, 53, 37, 0.35)';
+        ctx.lineWidth = 1;
+        const tileSize = 64;
+        for (let x = 0; x < this.logicalWidth; x += tileSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, this.logicalHeight);
+          ctx.stroke();
+        }
+        for (let y = 0; y < this.logicalHeight; y += tileSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(this.logicalWidth, y);
+          ctx.stroke();
+        }
+
+        // Ambient Corner Mayan glyph medallions
+        [
+          { x: 40, y: 40 },
+          { x: this.logicalWidth - 40, y: 40 },
+          { x: 40, y: this.logicalHeight - 40 },
+          { x: this.logicalWidth - 40, y: this.logicalHeight - 40 }
+        ].forEach(corner => {
+          ctx.strokeStyle = 'rgba(217, 119, 6, 0.15)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(corner.x, corner.y, 25, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeRect(corner.x - 12, corner.y - 12, 24, 24);
+        });
+
+        ctx.restore();
+      }
+
+      gameLoop(now) {
+        const dt = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+
+        this.update(dt);
+        this.draw();
+
+        requestAnimationFrame((t) => this.gameLoop(t));
+      }
+    }
+
+    // Initialize Game on Window Load
+    window.onload = () => {
+      new ZumaGame();
+    };
+  </script>
+</body>
+</html>
