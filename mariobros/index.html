@@ -1,1 +1,1563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Super Mario Bros - Classic Web Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      background-color: #0f111a;
+      font-family: 'Press Start 2P', monospace;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .pixel-border {
+      box-shadow: 
+        0 -4px 0 0 #000,
+        0 4px 0 0 #000,
+        -4px 0 0 0 #000,
+        4px 0 0 0 #000;
+    }
+    .touch-btn {
+      transition: transform 0.05s ease, background-color 0.1s ease;
+      touch-action: none;
+    }
+    .touch-btn:active {
+      transform: scale(0.92);
+      filter: brightness(0.85);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between text-white p-2 sm:p-4 select-none">
 
+  <!-- Cabecera / HUD superior -->
+  <header class="w-full max-w-4xl flex flex-wrap items-center justify-between px-3 py-2 bg-neutral-900 border-2 border-neutral-700 rounded-lg shadow-md mb-2 text-xs sm:text-sm">
+    <div class="flex items-center gap-3">
+      <span class="text-red-500 font-bold tracking-wider">SUPER MARIO</span>
+      <span id="hud-score" class="text-white">000000</span>
+    </div>
+    <div class="flex items-center gap-2 text-yellow-400">
+      <svg class="w-4 h-4 inline-block" viewBox="0 0 16 16" fill="currentColor">
+        <rect x="5" y="1" width="6" height="14" rx="3"/>
+        <rect x="7" y="3" width="2" height="10" fill="#fef08a"/>
+      </svg>
+      <span id="hud-coins">x00</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-stone-400">WORLD</span>
+      <span id="hud-world" class="text-white">1-1</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-stone-400">TIME</span>
+      <span id="hud-time" class="text-white">400</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-audio" class="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 rounded text-[10px] text-yellow-300 border border-neutral-600">
+        🔊 AUDIO: ON
+      </button>
+      <button id="btn-reset" class="px-2 py-1 bg-red-800 hover:bg-red-700 active:bg-red-600 rounded text-[10px] text-white border border-red-600">
+        REINICIAR
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenedor principal del Canvas del Juego -->
+  <main class="relative w-full max-w-4xl flex flex-col items-center justify-center">
+    <div class="relative w-full aspect-[4/3] max-h-[70vh] bg-[#5c94fc] rounded-lg overflow-hidden border-4 border-neutral-800 shadow-2xl flex items-center justify-center">
+      <canvas id="gameCanvas" width="512" height="448" class="w-full h-full block"></canvas>
+
+      <!-- Pantalla de Inicio / Menú Overlay -->
+      <div id="start-screen" class="absolute inset-0 bg-[#5c94fc]/90 backdrop-blur-xs flex flex-col items-center justify-center text-center p-4 z-20">
+        <div class="bg-[#c84c0c] border-4 border-white p-4 sm:p-6 rounded-lg shadow-2xl max-w-md w-full mb-4 transform hover:scale-[1.01] transition-transform">
+          <h1 class="text-2xl sm:text-3xl text-yellow-300 tracking-wider mb-1 drop-shadow-[3px_3px_0_#000]">SUPER</h1>
+          <h2 class="text-3xl sm:text-4xl text-white tracking-widest drop-shadow-[4px_4px_0_#000]">MARIO BROS.</h2>
+        </div>
+        <p class="text-xs sm:text-sm text-yellow-200 mb-6 drop-shadow-[2px_2px_0_#000] animate-pulse">
+          ¡PULSA JUGAR O ESPACIO PARA INICIAR!
+        </p>
+        <button id="btn-start" class="px-6 py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white text-sm sm:text-base border-4 border-black rounded shadow-lg pixel-border mb-4 cursor-pointer font-bold tracking-widest">
+          ▶ INICIAR JUEGO
+        </button>
+        <div class="text-[10px] sm:text-xs text-neutral-900 bg-white/80 p-3 rounded border border-black/40 text-left space-y-1">
+          <p><strong>Controles en PC:</strong></p>
+          <p>• Flechas ◄ ► o [A] / [D] : Moverse</p>
+          <p>• Espacio / [W] / [Z] : Saltar</p>
+          <p>• [Shift] / [X] : Correr rápido</p>
+        </div>
+      </div>
+
+      <!-- Pantalla de Game Over / Victoria Overlay -->
+      <div id="modal-screen" class="hidden absolute inset-0 bg-black/85 flex flex-col items-center justify-center text-center p-4 z-30">
+        <h2 id="modal-title" class="text-2xl sm:text-4xl text-red-500 mb-4 tracking-wider drop-shadow-[3px_3px_0_#fff]">GAME OVER</h2>
+        <p id="modal-desc" class="text-xs sm:text-sm text-yellow-300 mb-6">¿Quieres intentarlo de nuevo?</p>
+        <button id="btn-modal-restart" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-black text-sm border-4 border-black rounded shadow-lg font-bold">
+          JUGAR OTRA VEZ
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Controles táctiles en pantalla para móviles y tablets -->
+  <footer class="w-full max-w-4xl mt-2 flex items-center justify-between px-4 py-2 select-none md:hidden">
+    <!-- D-Pad (Izquierda / Derecha) -->
+    <div class="flex gap-2">
+      <button id="touch-left" class="touch-btn w-14 h-14 bg-neutral-800 border-2 border-neutral-600 rounded-lg flex items-center justify-center text-xl active:bg-neutral-700 text-white shadow">
+        ◄
+      </button>
+      <button id="touch-right" class="touch-btn w-14 h-14 bg-neutral-800 border-2 border-neutral-600 rounded-lg flex items-center justify-center text-xl active:bg-neutral-700 text-white shadow">
+        ►
+      </button>
+    </div>
+
+    <!-- Botones B (Correr) y A (Saltar) -->
+    <div class="flex gap-3">
+      <button id="touch-b" class="touch-btn w-14 h-14 bg-red-700 border-2 border-red-500 rounded-full flex flex-col items-center justify-center text-xs font-bold text-white shadow">
+        <span>B</span>
+        <span class="text-[8px] text-red-200">RUN</span>
+      </button>
+      <button id="touch-a" class="touch-btn w-14 h-14 bg-amber-500 border-2 border-yellow-300 rounded-full flex flex-col items-center justify-center text-xs font-bold text-neutral-900 shadow">
+        <span>A</span>
+        <span class="text-[8px] text-neutral-800">JUMP</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Script del motor del juego Super Mario Bros -->
+  <script>
+    /* ==========================================================================
+       SUPER MARIO BROS - MOTOR WEB COMPLETO EN CANVAS
+       ========================================================================== */
+
+    // --- SISTEMA DE AUDIO VÍA WEB AUDIO API (Sintetizador 8-Bits) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playJump() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(550, now + 0.18);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.19);
+      }
+
+      playCoin() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(987.77, now); // B5
+        osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.linearRampToValueAtTime(0.15, now + 0.35);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
+      }
+
+      playStomp() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.12);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      playBump() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.1);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      }
+
+      playPowerup() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [330, 392, 659, 523, 587, 784];
+        const now = this.ctx.currentTime;
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.06);
+          gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.06 + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.06);
+          osc.stop(now + idx * 0.06 + 0.07);
+        });
+      }
+
+      playDie() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [500, 400, 300, 200, 150];
+        const now = this.ctx.currentTime;
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+          gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.1);
+          osc.stop(now + idx * 0.1 + 0.1);
+        });
+      }
+
+      playVictory() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [261.63, 329.63, 392, 523.25, 659.25, 783.99, 1046.5];
+        const now = this.ctx.currentTime;
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+          gain.gain.setValueAtTime(0.2, now + idx * 0.12);
+          gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.12 + 0.14);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.12);
+          osc.stop(now + idx * 0.12 + 0.15);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // --- CONFIGURACIÓN Y CONSTANTES DEL JUEGO ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Resolución nativa 256x224 (estándar NES) escalada en el canvas a 512x448
+    const V_WIDTH = 256;
+    const V_HEIGHT = 224;
+    const TILE_SIZE = 16;
+    const GRAVITY = 0.28;
+    const MAX_FALL_SPEED = 7.0;
+
+    // Paleta NES clásica
+    const PALETTE = {
+      sky: '#5c94fc',
+      groundBrown: '#c84c0c',
+      groundLight: '#fc9838',
+      groundDark: '#000000',
+      brickRed: '#b84418',
+      brickMortar: '#000000',
+      questionGold: '#fc9838',
+      questionMark: '#884400',
+      pipeGreen: '#00a800',
+      pipeLight: '#80d010',
+      pipeDark: '#005000',
+      marioRed: '#d82800',
+      marioBrown: '#885400',
+      marioSkin: '#fcbc88',
+      marioWhite: '#ffffff',
+      goombaBrown: '#a84400',
+      goombaLight: '#fcbc88',
+      goombaBlack: '#000000',
+      cloudWhite: '#fcfcfc',
+      cloudCyan: '#8cf0f8',
+      bushGreen: '#00a800',
+      hillGreen: '#00a800'
+    };
+
+    // --- DIBUJADORES DE PIXEL ART PROCEDURALES ---
+    // Generan sprites auténticos de NES sin depender de imágenes externas
+
+    function drawPixelMario(ctx, x, y, state, facing, walkFrame, isJumping) {
+      ctx.save();
+      ctx.translate(Math.floor(x + (facing === -1 ? 16 : 0)), Math.floor(y));
+      if (facing === -1) ctx.scale(-1, 1);
+
+      const R = PALETTE.marioRed;
+      const B = PALETTE.marioBrown;
+      const S = PALETTE.marioSkin;
+      const W = PALETTE.marioWhite;
+
+      if (state === 'small') {
+        // Mario Pequeño (16x16)
+        if (isJumping) {
+          // Sprite Salto
+          drawPixels(ctx, [
+            "    RRRRR       ",
+            "   RRRRRRRRR    ",
+            "   BBBS S      ",
+            "  BSBS SSS     ",
+            "  BSBBS SSS    ",
+            "  BBSSSSBBB    ",
+            "    SSSSSS     ",
+            "   BBRBB       ",
+            "  BBBRBBR      ",
+            " BBBBRRRR      ",
+            " S BRRRRR S    ",
+            " SS RRRRR SS   ",
+            "  S RRRRR S    ",
+            "   RR   RR     ",
+            "  BBB    BBB   ",
+            "  BBB    BBB   "
+          ], { R, B, S, W });
+        } else if (walkFrame === 0) {
+          // Sprite Mario Parado
+          drawPixels(ctx, [
+            "    RRRRR       ",
+            "   RRRRRRRRR    ",
+            "   BBBS S      ",
+            "  BSBS SSS     ",
+            "  BSBBS SSS    ",
+            "  BBSSSSBBB    ",
+            "    SSSSSSS    ",
+            "   BBRB        ",
+            "  BBBRBBRR     ",
+            " BBBBRRRRR     ",
+            " SS BRRRRR S   ",
+            " S  RRRRRR S   ",
+            "    RRRRRR     ",
+            "   BBB  BBB    ",
+            "  BBBB  BBBB   ",
+            "               "
+          ], { R, B, S, W });
+        } else if (walkFrame === 1) {
+          // Sprite Mario Corriendo 1
+          drawPixels(ctx, [
+            "    RRRRR       ",
+            "   RRRRRRRRR    ",
+            "   BBBS S      ",
+            "  BSBS SSS     ",
+            "  BSBBS SSS    ",
+            "  BBSSSSBBB    ",
+            "    SSSSSSS    ",
+            "   RRBR        ",
+            "  RRRBRBBR     ",
+            "  RRRBRRRR     ",
+            "   BRRRRR      ",
+            "   BRRRRRR     ",
+            "    RRRRRR     ",
+            "   BB   BBB    ",
+            "  BB     BBB   ",
+            "               "
+          ], { R, B, S, W });
+        } else {
+          // Sprite Mario Corriendo 2
+          drawPixels(ctx, [
+            "    RRRRR       ",
+            "   RRRRRRRRR    ",
+            "   BBBS S      ",
+            "  BSBS SSS     ",
+            "  BSBBS SSS    ",
+            "  BBSSSSBBB    ",
+            "    SSSSSSS    ",
+            "    RBRR       ",
+            "   RBBRRRR     ",
+            "   RRRRRRR     ",
+            "  S RRRRRR S   ",
+            "  SS RRRR SS   ",
+            "   S RRRR S    ",
+            "    BBB  BB    ",
+            "   BBB    BB   ",
+            "               "
+          ], { R, B, S, W });
+        }
+      } else {
+        // Mario Grande / Super Mario (16x32)
+        const offset = isJumping ? -16 : -16;
+        ctx.translate(0, offset);
+        drawPixels(ctx, [
+          "     RRRRR      ",
+          "    RRRRRRRRR   ",
+          "    BBBS S     ",
+          "   BSBS SSS    ",
+          "   BSBBS SSS   ",
+          "   BBSSSSBBB   ",
+          "     SSSSSSS   ",
+          "    RRBRR      ",
+          "   RRRBRRR     ",
+          "  RRRRBRRRR    ",
+          "  SSRRRRRRSS   ",
+          "  SSRRRRRRSS   ",
+          "   SRRRRRRS    ",
+          "    RRRRRR     ",
+          "    BBRRBB     ",
+          "   BBBRRBBB    ",
+          "   BBBRRBBB    ",
+          "   BBBBBBBB    ",
+          "   BBBBBBBB    ",
+          "   BBBBBBBB    ",
+          "   BBB  BBB    ",
+          "   BBB  BBB    ",
+          "   BBB  BBB    ",
+          "   BBB  BBB    ",
+          "  BBB    BBB   ",
+          "  BBB    BBB   ",
+          "  BBB    BBB   ",
+          "  BBB    BBB   ",
+          "               ",
+          "               ",
+          "               ",
+          "               "
+        ], { R, B, S, W });
+      }
+
+      ctx.restore();
+    }
+
+    function drawPixelGoomba(ctx, x, y, walkFrame, squished) {
+      const B = PALETTE.goombaBrown;
+      const L = PALETTE.goombaLight;
+      const K = PALETTE.goombaBlack;
+
+      if (squished) {
+        // Goomba Aplastado
+        drawPixelsAt(ctx, x, y + 8, [
+          "                ",
+          "                ",
+          "                ",
+          "                ",
+          "                ",
+          "     BBBBBB     ",
+          "    BBBBBBBB    ",
+          "   BBLLKKLLBB   ",
+          "  BBBKKB BKKBB  ",
+          "  BBBBBBBBBBBB  ",
+          "  LLLLLLLLLLLL  ",
+          "  KKKKKKKKKKKK  ",
+          "  KKKKKKKKKKKK  ",
+          "  KKKKKKKKKKKK  ",
+          "                ",
+          "                "
+        ], { B, L, K });
+        return;
+      }
+
+      const footPattern = (walkFrame === 0) ?
+        [
+          "     BBBB       ",
+          "   BBBBBBBB     ",
+          "  BBBBBBBBBB    ",
+          " BBBBBBBBBBBB   ",
+          " BBLLKKLLKKBB   ",
+          " BBLKKKLKKKLB   ",
+          " BLLKKKLKKKLB   ",
+          " BLLLLLLLLLLB   ",
+          "  LLLLLLLLLL    ",
+          "   LLLLLLLL     ",
+          "    LLLLLL      ",
+          "    BBBBBB      ",
+          "   BBBBBBBB     ",
+          "  KKKK   KKK    ",
+          "  KKKK    KK    ",
+          "                "
+        ] :
+        [
+          "     BBBB       ",
+          "   BBBBBBBB     ",
+          "  BBBBBBBBBB    ",
+          " BBBBBBBBBBBB   ",
+          " BBLLKKLLKKBB   ",
+          " BBLKKKLKKKLB   ",
+          " BLLKKKLKKKLB   ",
+          " BLLLLLLLLLLB   ",
+          "  LLLLLLLLLL    ",
+          "   LLLLLLLL     ",
+          "    LLLLLL      ",
+          "    BBBBBB      ",
+          "   BBBBBBBB     ",
+          "    KKK   KKKK  ",
+          "    KK    KKKK  ",
+          "                "
+        ];
+
+      drawPixelsAt(ctx, x, y, footPattern, { B, L, K });
+    }
+
+    function drawPixelMushroom(ctx, x, y) {
+      const R = '#e40058';
+      const W = '#ffffff';
+      const S = '#fcbc88';
+      const K = '#000000';
+
+      drawPixelsAt(ctx, x, y, [
+        "     RRRRRR     ",
+        "   RRRRRRRRRR   ",
+        "  RRWWWRRWWWRR  ",
+        " RRWWWWWRWWWWWR ",
+        " RRWWWWWRWWWWWR ",
+        " RRRWWWRRRWWWRR ",
+        " RRRRRRRRRRRRRR ",
+        "  RRRRRRRRRRRR  ",
+        "    SSSSSSSS    ",
+        "   SSKSSSSKSS   ",
+        "   SSKSSSSKSS   ",
+        "   SSSSSSSSSS   ",
+        "   SSSSSSSSSS   ",
+        "    SSSSSSSS    ",
+        "                ",
+        "                "
+      ], { R, W, S, K });
+    }
+
+    function drawPixelCoin(ctx, x, y, frame) {
+      const Y = '#fcbc00';
+      const W = '#ffffff';
+      const D = '#885400';
+
+      const f = Math.floor(frame % 4);
+      let pattern;
+      if (f === 0) {
+        pattern = [
+          "     YYYY       ",
+          "   YYWWWWYY     ",
+          "  YYWWDDWWYY    ",
+          "  YYWWDDWWYY    ",
+          " YYWWDDDDWWYY   ",
+          " YYWWDDDDWWYY   ",
+          " YYWWDDDDWWYY   ",
+          " YYWWDDDDWWYY   ",
+          "  YYWWDDWWYY    ",
+          "  YYWWDDWWYY    ",
+          "   YYWWWWYY     ",
+          "     YYYY       ",
+          "                ",
+          "                ",
+          "                ",
+          "                "
+        ];
+      } else if (f === 1 || f === 3) {
+        pattern = [
+          "      YY        ",
+          "    YYWWYY      ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "   YYWDDWYY     ",
+          "    YYWWYY      ",
+          "      YY        ",
+          "                ",
+          "                ",
+          "                ",
+          "                "
+        ];
+      } else {
+        pattern = [
+          "       Y        ",
+          "      YY        ",
+          "      WW        ",
+          "      WW        ",
+          "      DD        ",
+          "      DD        ",
+          "      DD        ",
+          "      DD        ",
+          "      WW        ",
+          "      WW        ",
+          "      YY        ",
+          "       Y        ",
+          "                ",
+          "                ",
+          "                ",
+          "                "
+        ];
+      }
+      drawPixelsAt(ctx, x, y, pattern, { Y, W, D });
+    }
+
+    // Helper para transformar arrays de caracteres en pixeles exactos
+    function drawPixels(ctx, asciiRows, colorMap) {
+      for (let r = 0; r < asciiRows.length; r++) {
+        const row = asciiRows[r];
+        for (let c = 0; c < row.length; c++) {
+          const char = row[c];
+          if (char !== ' ' && colorMap[char]) {
+            ctx.fillStyle = colorMap[char];
+            ctx.fillRect(c, r, 1, 1);
+          }
+        }
+      }
+    }
+
+    function drawPixelsAt(ctx, x, y, asciiRows, colorMap) {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      drawPixels(ctx, asciiRows, colorMap);
+      ctx.restore();
+    }
+
+    // --- REPRESENTACIÓN DE TILES Y ESCENARIO ---
+    function drawTile(ctx, type, px, py, animOffset = 0) {
+      if (type === 'ground') {
+        // Bloque de suelo clásico
+        ctx.fillStyle = PALETTE.groundBrown;
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = PALETTE.groundLight;
+        ctx.fillRect(px, py, 16, 2);
+        ctx.fillRect(px, py, 2, 16);
+        ctx.fillStyle = PALETTE.groundDark;
+        ctx.fillRect(px + 14, py, 2, 16);
+        ctx.fillRect(px, py + 14, 16, 2);
+        // Detalles internos
+        ctx.fillRect(px + 4, py + 4, 3, 3);
+        ctx.fillRect(px + 9, py + 9, 3, 3);
+      } else if (type === 'brick') {
+        // Bloque de ladrillo rompible
+        ctx.save();
+        ctx.translate(px, py - animOffset);
+        ctx.fillStyle = PALETTE.brickRed;
+        ctx.fillRect(0, 0, 16, 16);
+        ctx.fillStyle = PALETTE.brickMortar;
+        // Líneas horizontales de cemento
+        ctx.fillRect(0, 0, 16, 1);
+        ctx.fillRect(0, 5, 16, 1);
+        ctx.fillRect(0, 10, 16, 1);
+        ctx.fillRect(0, 15, 16, 1);
+        // Líneas verticales
+        ctx.fillRect(7, 1, 1, 4);
+        ctx.fillRect(3, 6, 1, 4);
+        ctx.fillRect(11, 6, 1, 4);
+        ctx.fillRect(7, 11, 1, 4);
+        ctx.restore();
+      } else if (type === 'question' || type === 'question_mushroom') {
+        // Bloque de interrogación activo
+        ctx.save();
+        ctx.translate(px, py - animOffset);
+        ctx.fillStyle = PALETTE.questionGold;
+        ctx.fillRect(0, 0, 16, 16);
+        ctx.fillStyle = '#000000';
+        ctx.strokeRect(0.5, 0.5, 15, 15);
+        // Dibujar tornillos de esquinas
+        ctx.fillRect(1, 1, 1, 1);
+        ctx.fillRect(14, 1, 1, 1);
+        ctx.fillRect(1, 14, 1, 1);
+        ctx.fillRect(14, 14, 1, 1);
+        // Símbolo '?'
+        ctx.fillStyle = PALETTE.questionMark;
+        ctx.fillRect(6, 3, 4, 2);
+        ctx.fillRect(9, 5, 2, 3);
+        ctx.fillRect(6, 7, 3, 2);
+        ctx.fillRect(6, 11, 2, 2);
+        ctx.restore();
+      } else if (type === 'empty') {
+        // Bloque ya golpeado (vacío)
+        ctx.save();
+        ctx.translate(px, py - animOffset);
+        ctx.fillStyle = '#885400';
+        ctx.fillRect(0, 0, 16, 16);
+        ctx.fillStyle = '#000';
+        ctx.strokeRect(0.5, 0.5, 15, 15);
+        ctx.fillRect(1, 1, 2, 2);
+        ctx.fillRect(13, 1, 2, 2);
+        ctx.fillRect(1, 13, 2, 2);
+        ctx.fillRect(13, 13, 2, 2);
+        ctx.restore();
+      } else if (type === 'pipe_top_l') {
+        ctx.fillStyle = PALETTE.pipeGreen;
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = PALETTE.pipeLight;
+        ctx.fillRect(px + 2, py, 4, 16);
+        ctx.fillStyle = PALETTE.pipeDark;
+        ctx.fillRect(px, py, 2, 16);
+        ctx.fillRect(px, py, 16, 2);
+      } else if (type === 'pipe_top_r') {
+        ctx.fillStyle = PALETTE.pipeGreen;
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = PALETTE.pipeLight;
+        ctx.fillRect(px + 2, py, 2, 16);
+        ctx.fillStyle = PALETTE.pipeDark;
+        ctx.fillRect(px + 14, py, 2, 16);
+        ctx.fillRect(px, py, 16, 2);
+      } else if (type === 'pipe_body_l') {
+        ctx.fillStyle = PALETTE.pipeGreen;
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = PALETTE.pipeLight;
+        ctx.fillRect(px + 2, py, 4, 16);
+        ctx.fillStyle = PALETTE.pipeDark;
+        ctx.fillRect(px, py, 2, 16);
+      } else if (type === 'pipe_body_r') {
+        ctx.fillStyle = PALETTE.pipeGreen;
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = PALETTE.pipeLight;
+        ctx.fillRect(px + 2, py, 2, 16);
+        ctx.fillStyle = PALETTE.pipeDark;
+        ctx.fillRect(px + 14, py, 2, 16);
+      } else if (type === 'pole') {
+        ctx.fillStyle = '#408000';
+        ctx.fillRect(px + 7, py, 2, 16);
+        ctx.fillStyle = '#80d010';
+        ctx.fillRect(px + 7, py, 1, 16);
+      } else if (type === 'pole_top') {
+        ctx.fillStyle = '#fcbc00';
+        ctx.beginPath();
+        ctx.arc(px + 8, py + 8, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#408000';
+        ctx.fillRect(px + 7, py + 12, 2, 4);
+      } else if (type === 'castle_brick') {
+        ctx.fillStyle = '#5c94fc';
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = '#a84400';
+        ctx.fillRect(px, py, 16, 16);
+        ctx.fillStyle = '#000000';
+        ctx.strokeRect(px + 0.5, py + 0.5, 15, 15);
+      }
+    }
+
+    // --- DECORACIONES DE FONDO (Nubes, Colinas, Arbustos) ---
+    function drawCloud(ctx, x, y) {
+      ctx.fillStyle = PALETTE.cloudWhite;
+      ctx.beginPath();
+      ctx.arc(x + 16, y + 16, 12, 0, Math.PI * 2);
+      ctx.arc(x + 32, y + 10, 14, 0, Math.PI * 2);
+      ctx.arc(x + 48, y + 16, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(x + 8, y + 16, 48, 12);
+    }
+
+    function drawHill(ctx, x, y, width, height) {
+      ctx.fillStyle = PALETTE.hillGreen;
+      ctx.beginPath();
+      ctx.moveTo(x, y + height);
+      ctx.quadraticCurveTo(x + width / 2, y, x + width, y + height);
+      ctx.fill();
+      // Lunares oscuros característicos
+      ctx.fillStyle = '#005000';
+      ctx.fillRect(x + width * 0.45, y + height * 0.35, 4, 4);
+      ctx.fillRect(x + width * 0.35, y + height * 0.55, 4, 4);
+      ctx.fillRect(x + width * 0.6, y + height * 0.65, 4, 4);
+    }
+
+    function drawBush(ctx, x, y) {
+      ctx.fillStyle = PALETTE.bushGreen;
+      ctx.beginPath();
+      ctx.arc(x + 12, y + 10, 10, 0, Math.PI * 2);
+      ctx.arc(x + 24, y + 6, 12, 0, Math.PI * 2);
+      ctx.arc(x + 36, y + 10, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(x + 4, y + 10, 40, 6);
+    }
+
+    // --- DISEÑO DEL NIVEL 1-1 ---
+    const LEVEL_COLS = 220;
+    const LEVEL_ROWS = 14;
+
+    function buildWorld1_1() {
+      const grid = Array.from({ length: LEVEL_ROWS }, () => Array(LEVEL_COLS).fill(null));
+
+      // Suelo base (filas 12 y 13)
+      for (let c = 0; c < LEVEL_COLS; c++) {
+        // Huecos / Pozos en el suelo
+        if ((c >= 69 && c <= 71) || (c >= 86 && c <= 88) || (c >= 153 && c <= 155)) {
+          continue;
+        }
+        grid[12][c] = { type: 'ground' };
+        grid[13][c] = { type: 'ground' };
+      }
+
+      // Función auxiliar para bloques
+      const setBlock = (r, c, type) => {
+        grid[r][c] = { type, bumpTimer: 0 };
+      };
+
+      // Primer bloque interrogación
+      setBlock(9, 16, 'question');
+
+      // Fila de bloques clásicos: ladrillo, ?, ladrillo, ?, ladrillo
+      setBlock(9, 20, 'brick');
+      setBlock(9, 21, 'question_mushroom'); // Champiñón
+      setBlock(9, 22, 'brick');
+      setBlock(9, 23, 'question');
+      setBlock(9, 24, 'brick');
+
+      // Bloque interrogación alto
+      setBlock(5, 22, 'question');
+
+      // Tubería 1 (altura 2)
+      grid[10][28] = { type: 'pipe_top_l' };
+      grid[10][29] = { type: 'pipe_top_r' };
+      grid[11][28] = { type: 'pipe_body_l' };
+      grid[11][29] = { type: 'pipe_body_r' };
+
+      // Tubería 2 (altura 3)
+      grid[9][38] = { type: 'pipe_top_l' };
+      grid[9][39] = { type: 'pipe_top_r' };
+      grid[10][38] = { type: 'pipe_body_l' };
+      grid[10][39] = { type: 'pipe_body_r' };
+      grid[11][38] = { type: 'pipe_body_l' };
+      grid[11][39] = { type: 'pipe_body_r' };
+
+      // Tubería 3 (altura 4)
+      grid[8][46] = { type: 'pipe_top_l' };
+      grid[8][47] = { type: 'pipe_top_r' };
+      grid[9][46] = { type: 'pipe_body_l' };
+      grid[9][47] = { type: 'pipe_body_r' };
+      grid[10][46] = { type: 'pipe_body_l' };
+      grid[10][47] = { type: 'pipe_body_r' };
+      grid[11][46] = { type: 'pipe_body_l' };
+      grid[11][47] = { type: 'pipe_body_r' };
+
+      // Grupo de bloques tras el primer foso
+      setBlock(9, 77, 'brick');
+      setBlock(9, 78, 'question_mushroom');
+      setBlock(9, 79, 'brick');
+
+      // Bloques elevados con monedas
+      for (let c = 80; c <= 87; c++) {
+        setBlock(5, c, 'brick');
+      }
+      setBlock(9, 91, 'brick');
+      setBlock(9, 92, 'brick');
+      setBlock(9, 93, 'question');
+
+      // Escalera de piedra hacia la bandera
+      const startStairs = 134;
+      for (let step = 0; step < 8; step++) {
+        for (let row = 11 - step; row <= 11; row++) {
+          grid[row][startStairs + step] = { type: 'ground' };
+        }
+      }
+
+      // Asta de la Bandera (Columna 160)
+      grid[2][160] = { type: 'pole_top' };
+      for (let r = 3; r <= 11; r++) {
+        grid[r][160] = { type: 'pole' };
+      }
+
+      // Pequeño Castillo al final
+      for (let r = 8; r <= 11; r++) {
+        for (let c = 166; c <= 170; c++) {
+          grid[r][c] = { type: 'castle_brick' };
+        }
+      }
+
+      return grid;
+    }
+
+    // --- GESTIÓN DE ENTRADA (Teclado y Táctil) ---
+    const keys = {
+      left: false,
+      right: false,
+      down: false,
+      jump: false,
+      run: false
+    };
+
+    window.addEventListener('keydown', (e) => {
+      sound.init();
+      if (['ArrowUp', 'KeyW', 'Space'].includes(e.code)) {
+        keys.jump = true;
+        e.preventDefault();
+      }
+      if (['ArrowLeft', 'KeyA'].includes(e.code)) {
+        keys.left = true;
+        e.preventDefault();
+      }
+      if (['ArrowRight', 'KeyD'].includes(e.code)) {
+        keys.right = true;
+        e.preventDefault();
+      }
+      if (['ArrowDown', 'KeyS'].includes(e.code)) {
+        keys.down = true;
+        e.preventDefault();
+      }
+      if (['ShiftLeft', 'ShiftRight', 'KeyX'].includes(e.code)) {
+        keys.run = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (['ArrowUp', 'KeyW', 'Space'].includes(e.code)) keys.jump = false;
+      if (['ArrowLeft', 'KeyA'].includes(e.code)) keys.left = false;
+      if (['ArrowRight', 'KeyD'].includes(e.code)) keys.right = false;
+      if (['ArrowDown', 'KeyS'].includes(e.code)) keys.down = false;
+      if (['ShiftLeft', 'ShiftRight', 'KeyX'].includes(e.code)) keys.run = false;
+    });
+
+    // Enlazar controles táctiles móviles
+    function bindTouch(btnId, keyName) {
+      const el = document.getElementById(btnId);
+      if (!el) return;
+      const start = (e) => {
+        e.preventDefault();
+        sound.init();
+        keys[keyName] = true;
+      };
+      const end = (e) => {
+        e.preventDefault();
+        keys[keyName] = false;
+      };
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', end, { passive: false });
+      el.addEventListener('touchcancel', end, { passive: false });
+      el.addEventListener('mousedown', start);
+      el.addEventListener('mouseup', end);
+      el.addEventListener('mouseleave', end);
+    }
+
+    bindTouch('touch-left', 'left');
+    bindTouch('touch-right', 'right');
+    bindTouch('touch-a', 'jump');
+    bindTouch('touch-b', 'run');
+
+    // --- ESTADO Y LÓGICA DEL JUEGO ---
+    class MarioGame {
+      constructor() {
+        this.resetGame();
+      }
+
+      resetGame() {
+        this.score = 0;
+        this.coins = 0;
+        this.time = 400;
+        this.lives = 3;
+        this.gameOver = false;
+        this.victory = false;
+        this.timerCount = 0;
+        this.cameraX = 0;
+
+        this.level = buildWorld1_1();
+
+        // Inicializar Mario
+        this.mario = {
+          x: 40,
+          y: 176,
+          vx: 0,
+          vy: 0,
+          w: 14,
+          h: 16,
+          state: 'small', // 'small' o 'super'
+          facing: 1,
+          isGrounded: false,
+          isJumping: false,
+          walkFrame: 0,
+          walkAnimTimer: 0,
+          invulnerableTimer: 0,
+          isDead: false,
+          deathTimer: 0,
+          flagSliding: false,
+          cleared: false
+        };
+
+        // Goombas iniciales
+        this.enemies = [
+          { x: 22 * 16, y: 176, vx: -0.5, vy: 0, squished: false, deadTimer: 0 },
+          { x: 40 * 16, y: 176, vx: -0.5, vy: 0, squished: false, deadTimer: 0 },
+          { x: 51 * 16, y: 176, vx: -0.5, vy: 0, squished: false, deadTimer: 0 },
+          { x: 82 * 16, y: 64,  vx: -0.5, vy: 0, squished: false, deadTimer: 0 },
+          { x: 97 * 16, y: 176, vx: -0.5, vy: 0, squished: false, deadTimer: 0 },
+          { x: 100 * 16, y: 176, vx: -0.5, vy: 0, squished: false, deadTimer: 0 }
+        ];
+
+        // Partículas, monedas flotantes y champiñones
+        this.particles = [];
+        this.mushrooms = [];
+        this.flagY = 32;
+
+        this.updateHUD();
+      }
+
+      updateHUD() {
+        document.getElementById('hud-score').textContent = String(this.score).padStart(6, '0');
+        document.getElementById('hud-coins').textContent = `x${String(this.coins).padStart(2, '0')}`;
+        document.getElementById('hud-time').textContent = Math.max(0, Math.floor(this.time));
+      }
+
+      spawnCoinParticle(x, y) {
+        this.particles.push({
+          x: x + 4,
+          y: y - 8,
+          vy: -3.5,
+          timer: 24,
+          type: 'coin'
+        });
+      }
+
+      spawnBrickDebris(x, y) {
+        const vel = [
+          { vx: -1.5, vy: -4 },
+          { vx: 1.5, vy: -4 },
+          { vx: -1.2, vy: -2 },
+          { vx: 1.2, vy: -2 }
+        ];
+        vel.forEach(v => {
+          this.particles.push({
+            x: x + 4,
+            y: y + 4,
+            vx: v.vx,
+            vy: v.vy,
+            timer: 40,
+            type: 'brick_piece'
+          });
+        });
+      }
+
+      spawnMushroom(tileX, tileY) {
+        this.mushrooms.push({
+          x: tileX * 16,
+          y: (tileY - 1) * 16,
+          vx: 1.0,
+          vy: 0,
+          w: 14,
+          h: 16
+        });
+      }
+
+      killMario() {
+        if (this.mario.isDead) return;
+        this.mario.isDead = true;
+        this.mario.vy = -6;
+        this.mario.vx = 0;
+        this.lives--;
+        sound.playDie();
+      }
+
+      checkTileCollision(x, y, w, h) {
+        const leftTile = Math.floor(x / TILE_SIZE);
+        const rightTile = Math.floor((x + w - 1) / TILE_SIZE);
+        const topTile = Math.floor(y / TILE_SIZE);
+        const bottomTile = Math.floor((y + h - 1) / TILE_SIZE);
+
+        const collisions = [];
+
+        for (let r = topTile; r <= bottomTile; r++) {
+          for (let c = leftTile; c <= rightTile; c++) {
+            if (r >= 0 && r < LEVEL_ROWS && c >= 0 && c < LEVEL_COLS) {
+              const tile = this.level[r][c];
+              if (tile && !['pole', 'pole_top'].includes(tile.type)) {
+                collisions.push({ row: r, col: c, tile });
+              }
+            }
+          }
+        }
+        return collisions;
+      }
+
+      update() {
+        if (this.gameOver || this.victory) return;
+
+        // Temporizador de nivel
+        this.timerCount++;
+        if (this.timerCount >= 60) {
+          this.timerCount = 0;
+          this.time -= 1;
+          this.updateHUD();
+          if (this.time <= 0 && !this.mario.isDead) {
+            this.killMario();
+          }
+        }
+
+        const m = this.mario;
+
+        // Si Mario está muerto (animación de caída)
+        if (m.isDead) {
+          m.y += m.vy;
+          m.vy += GRAVITY;
+          m.deathTimer++;
+          if (m.deathTimer > 120) {
+            if (this.lives > 0) {
+              // Reiniciar posición
+              m.x = Math.max(40, this.cameraX + 20);
+              m.y = 100;
+              m.vx = 0;
+              m.vy = 0;
+              m.isDead = false;
+              m.deathTimer = 0;
+              m.state = 'small';
+              m.h = 16;
+            } else {
+              this.gameOver = true;
+              showModal('GAME OVER', '¡Te has quedado sin vidas!');
+            }
+          }
+          return;
+        }
+
+        // Si Mario toca la bandera y desliza
+        if (m.flagSliding) {
+          if (this.flagY < 160) this.flagY += 2;
+          if (m.y < 11 * 16) {
+            m.y += 2;
+          } else {
+            // Avanzar hacia el castillo
+            m.facing = 1;
+            m.x += 1;
+            if (m.x >= 168 * 16) {
+              this.victory = true;
+              sound.playVictory();
+              showModal('¡NIVEL COMPLETADO!', `¡Felicidades! Puntuación final: ${this.score}`);
+            }
+          }
+          return;
+        }
+
+        // Movimiento Horizontal de Mario
+        const accel = 0.12;
+        const maxSpeed = keys.run ? 2.8 : 1.8;
+        const friction = 0.88;
+
+        if (keys.left) {
+          m.vx -= accel;
+          m.facing = -1;
+        } else if (keys.right) {
+          m.vx += accel;
+          m.facing = 1;
+        } else {
+          m.vx *= friction;
+          if (Math.abs(m.vx) < 0.05) m.vx = 0;
+        }
+
+        m.vx = Math.max(-maxSpeed, Math.min(maxSpeed, m.vx));
+
+        // Aplicar VX y chequear colisión horizontal
+        m.x += m.vx;
+
+        // Impedir ir hacia atrás más allá de la cámara
+        if (m.x < this.cameraX) {
+          m.x = this.cameraX;
+          m.vx = 0;
+        }
+
+        let horizCollisions = this.checkTileCollision(m.x, m.y, m.w, m.h);
+        for (const col of horizCollisions) {
+          if (m.vx > 0) {
+            m.x = col.col * TILE_SIZE - m.w;
+            m.vx = 0;
+          } else if (m.vx < 0) {
+            m.x = (col.col + 1) * TILE_SIZE;
+            m.vx = 0;
+          }
+        }
+
+        // Salto y Gravedad
+        if (keys.jump) {
+          if (m.isGrounded) {
+            m.vy = -6.2;
+            m.isGrounded = false;
+            m.isJumping = true;
+            sound.playJump();
+          }
+        } else {
+          // Salto variable: soltar rápido corta el impulso
+          if (m.vy < -2.5) {
+            m.vy *= 0.7;
+          }
+        }
+
+        m.vy += GRAVITY;
+        if (m.vy > MAX_FALL_SPEED) m.vy = MAX_FALL_SPEED;
+
+        // Aplicar VY y chequear colisión vertical
+        m.y += m.vy;
+        m.isGrounded = false;
+
+        let vertCollisions = this.checkTileCollision(m.x, m.y, m.w, m.h);
+        for (const col of vertCollisions) {
+          if (m.vy > 0) {
+            // Aterrizaje en suelo
+            m.y = col.row * TILE_SIZE - m.h;
+            m.vy = 0;
+            m.isGrounded = true;
+            m.isJumping = false;
+          } else if (m.vy < 0) {
+            // Golpe a bloque superior con la cabeza
+            m.y = (col.row + 1) * TILE_SIZE;
+            m.vy = 0;
+            this.hitBlock(col.row, col.col);
+          }
+        }
+
+        // Caída al vacío (foso)
+        if (m.y > V_HEIGHT + 20) {
+          this.killMario();
+        }
+
+        // Animación de pasos
+        if (Math.abs(m.vx) > 0.1 && m.isGrounded) {
+          m.walkAnimTimer += Math.abs(m.vx) * 0.2;
+          m.walkFrame = Math.floor(m.walkAnimTimer) % 3;
+        } else {
+          m.walkFrame = 0;
+        }
+
+        // Chequear llegada a la Bandera (columna 160)
+        if (m.x >= 160 * 16 - 8 && m.x <= 160 * 16 + 8 && !m.flagSliding) {
+          m.flagSliding = true;
+          m.vx = 0;
+          m.vy = 0;
+          this.score += 2000;
+          this.updateHUD();
+          sound.playVictory();
+        }
+
+        // Actualizar desplazamiento de la cámara
+        const targetCamX = m.x - V_WIDTH * 0.35;
+        if (targetCamX > this.cameraX) {
+          this.cameraX = targetCamX;
+        }
+
+        // Actualizar Goombas
+        for (const g of this.enemies) {
+          if (g.squished) {
+            g.deadTimer++;
+            continue;
+          }
+
+          // Solo activar enemigos cercanos a la pantalla
+          if (g.x > this.cameraX + V_WIDTH + 64 || g.x < this.cameraX - 64) continue;
+
+          g.vy += GRAVITY;
+          g.x += g.vx;
+
+          // Colisión horizontal de Goomba con bloques/tuberías
+          const gColsX = this.checkTileCollision(g.x, g.y, 14, 14);
+          if (gColsX.length > 0) {
+            g.vx = -g.vx;
+          }
+
+          g.y += g.vy;
+          const gColsY = this.checkTileCollision(g.x, g.y, 14, 14);
+          for (const col of gColsY) {
+            if (g.vy > 0) {
+              g.y = col.row * TILE_SIZE - 14;
+              g.vy = 0;
+            }
+          }
+
+          // Colisión entre Mario y Goomba
+          if (
+            m.x + m.w > g.x &&
+            m.x < g.x + 14 &&
+            m.y + m.h > g.y &&
+            m.y < g.y + 14
+          ) {
+            // ¿Pisa Mario al Goomba desde arriba?
+            if (m.vy > 0 && m.y + m.h <= g.y + 10) {
+              g.squished = true;
+              m.vy = -4.5; // Rebote
+              this.score += 200;
+              this.updateHUD();
+              sound.playStomp();
+            } else {
+              // Mario recibe daño
+              if (m.invulnerableTimer === 0) {
+                if (m.state === 'super') {
+                  m.state = 'small';
+                  m.h = 16;
+                  m.invulnerableTimer = 90;
+                  sound.playBump();
+                } else {
+                  this.killMario();
+                }
+              }
+            }
+          }
+        }
+
+        // Limpiar Goombas aplastados
+        this.enemies = this.enemies.filter(g => !g.squished || g.deadTimer < 30);
+
+        // Actualizar Champiñones
+        for (let i = this.mushrooms.length - 1; i >= 0; i--) {
+          const shroom = this.mushrooms[i];
+          shroom.vy += GRAVITY;
+          shroom.x += shroom.vx;
+
+          const shColsX = this.checkTileCollision(shroom.x, shroom.y, 14, 14);
+          if (shColsX.length > 0) shroom.vx = -shroom.vx;
+
+          shroom.y += shroom.vy;
+          const shColsY = this.checkTileCollision(shroom.x, shroom.y, 14, 14);
+          for (const col of shColsY) {
+            if (shroom.vy > 0) {
+              shroom.y = col.row * TILE_SIZE - 14;
+              shroom.vy = 0;
+            }
+          }
+
+          // Mario recoge el champiñón
+          if (
+            m.x + m.w > shroom.x &&
+            m.x < shroom.x + 14 &&
+            m.y + m.h > shroom.y &&
+            m.y < shroom.y + 14
+          ) {
+            m.state = 'super';
+            m.h = 24;
+            m.y -= 8;
+            this.score += 1000;
+            this.updateHUD();
+            sound.playPowerup();
+            this.mushrooms.splice(i, 1);
+          }
+        }
+
+        // Actualizar temporizador de invulnerabilidad
+        if (m.invulnerableTimer > 0) m.invulnerableTimer--;
+
+        // Actualizar partículas
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.timer--;
+          if (p.type === 'coin') {
+            p.y += p.vy;
+            p.vy += 0.25;
+          } else if (p.type === 'brick_piece') {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.3;
+          }
+          if (p.timer <= 0) {
+            this.particles.splice(i, 1);
+          }
+        }
+      }
+
+      hitBlock(r, c) {
+        const tile = this.level[r][c];
+        if (!tile) return;
+
+        if (tile.type === 'question' || tile.type === 'question_mushroom') {
+          tile.bumpTimer = 10;
+          sound.playBump();
+
+          if (tile.type === 'question') {
+            this.coins++;
+            this.score += 200;
+            this.spawnCoinParticle(c * 16, r * 16);
+            sound.playCoin();
+          } else if (tile.type === 'question_mushroom') {
+            this.spawnMushroom(c, r);
+            sound.playPowerup();
+          }
+          tile.type = 'empty';
+          this.updateHUD();
+        } else if (tile.type === 'brick') {
+          if (this.mario.state === 'super') {
+            // Romper ladrillo
+            this.level[r][c] = null;
+            this.spawnBrickDebris(c * 16, r * 16);
+            this.score += 50;
+            this.updateHUD();
+            sound.playBump();
+          } else {
+            // Solo rebota si Mario es pequeño
+            tile.bumpTimer = 8;
+            sound.playBump();
+          }
+        }
+      }
+
+      render() {
+        ctx.save();
+        // Limpiar cielo
+        ctx.fillStyle = PALETTE.sky;
+        ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+        // Desplazar cámara horizontal
+        ctx.translate(-Math.floor(this.cameraX), 0);
+
+        // Dibujar elementos de fondo (Nubes, Colinas, Arbustos)
+        this.renderBackgroundDecorations();
+
+        // Dibujar bloques del escenario
+        const startCol = Math.max(0, Math.floor(this.cameraX / TILE_SIZE));
+        const endCol = Math.min(LEVEL_COLS - 1, Math.floor((this.cameraX + V_WIDTH) / TILE_SIZE) + 1);
+
+        for (let r = 0; r < LEVEL_ROWS; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const tile = this.level[r][c];
+            if (tile) {
+              let bumpOffset = 0;
+              if (tile.bumpTimer > 0) {
+                bumpOffset = Math.sin((tile.bumpTimer / 10) * Math.PI) * 4;
+                tile.bumpTimer--;
+              }
+              drawTile(ctx, tile.type, c * 16, r * 16, bumpOffset);
+            }
+          }
+        }
+
+        // Bandera en el asta
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(160 * 16, this.flagY);
+        ctx.lineTo(160 * 16 - 12, this.flagY + 6);
+        ctx.lineTo(160 * 16, this.flagY + 12);
+        ctx.fill();
+
+        // Champiñones
+        for (const sh of this.mushrooms) {
+          drawPixelMushroom(ctx, sh.x, sh.y);
+        }
+
+        // Goombas
+        for (const g of this.enemies) {
+          if (g.x > this.cameraX - 20 && g.x < this.cameraX + V_WIDTH + 20) {
+            const walkFrame = Math.floor(Date.now() / 150) % 2;
+            drawPixelGoomba(ctx, g.x, g.y, walkFrame, g.squished);
+          }
+        }
+
+        // Mario
+        const m = this.mario;
+        // Efecto parpadeo si es invulnerable
+        if (m.invulnerableTimer === 0 || Math.floor(m.invulnerableTimer / 4) % 2 === 0) {
+          drawPixelMario(ctx, m.x, m.y, m.state, m.facing, m.walkFrame, !m.isGrounded);
+        }
+
+        // Partículas (monedas emergentes y pedazos de ladrillo)
+        for (const p of this.particles) {
+          if (p.type === 'coin') {
+            drawPixelCoin(ctx, p.x, p.y, Date.now() / 60);
+          } else if (p.type === 'brick_piece') {
+            ctx.fillStyle = PALETTE.brickRed;
+            ctx.fillRect(p.x, p.y, 4, 4);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      renderBackgroundDecorations() {
+        // Nubes periódicas
+        for (let i = 0; i < LEVEL_COLS; i += 24) {
+          drawCloud(ctx, i * 16, 32);
+          drawCloud(ctx, (i + 12) * 16, 50);
+        }
+
+        // Colinas verdes
+        for (let i = 0; i < LEVEL_COLS; i += 36) {
+          drawHill(ctx, i * 16, 144, 64, 48);
+          drawHill(ctx, (i + 18) * 16, 160, 48, 32);
+        }
+
+        // Arbustos
+        for (let i = 0; i < LEVEL_COLS; i += 28) {
+          drawBush(ctx, (i + 8) * 16, 176);
+          drawBush(ctx, (i + 22) * 16, 176);
+        }
+      }
+    }
+
+    // --- INSTANCIA Y BUCLE PRINCIPAL ---
+    let game = null;
+
+    function gameLoop() {
+      if (game) {
+        game.update();
+        game.render();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- CONTROL DE PANTALLAS Y MODALES ---
+    const startScreen = document.getElementById('start-screen');
+    const modalScreen = document.getElementById('modal-screen');
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modal-desc');
+
+    function startGame() {
+      sound.init();
+      startScreen.classList.add('hidden');
+      modalScreen.classList.add('hidden');
+      game = new MarioGame();
+    }
+
+    function showModal(title, desc) {
+      modalTitle.textContent = title;
+      modalDesc.textContent = desc;
+      modalScreen.classList.remove('hidden');
+    }
+
+    document.getElementById('btn-start').addEventListener('click', startGame);
+    document.getElementById('btn-modal-restart').addEventListener('click', startGame);
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      sound.init();
+      game = new MarioGame();
+      modalScreen.classList.add('hidden');
+    });
+
+    // Control de Audio ON/OFF
+    const btnAudio = document.getElementById('btn-audio');
+    btnAudio.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      btnAudio.textContent = sound.enabled ? '🔊 AUDIO: ON' : '🔈 AUDIO: OFF';
+      btnAudio.classList.toggle('text-yellow-300', sound.enabled);
+      btnAudio.classList.toggle('text-neutral-400', !sound.enabled);
+    });
+
+    // Iniciar con tecla Espacio o Enter desde el menú
+    window.addEventListener('keydown', (e) => {
+      if (!game && (e.code === 'Space' || e.code === 'Enter')) {
+        startGame();
+      }
+    });
+
+    // Configurar y arrancar animación en la carga de página
+    window.onload = () => {
+      // Dibujar vista inicial estática de fondo en la pantalla de título
+      const tempGame = new MarioGame();
+      tempGame.render();
+      gameLoop();
+    };
+  </script>
+</body>
+</html>
