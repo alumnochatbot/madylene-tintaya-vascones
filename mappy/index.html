@@ -1,1 +1,642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mappy Retro Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            touch-action: none;
+        }
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .retro-shadow {
+            box-shadow: 4px 4px 0px #000000;
+        }
+        .retro-button {
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .retro-button:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000000;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 md:p-4">
 
+    <!-- Header / Scoreboard -->
+    <header class="w-full max-w-4xl bg-slate-800 border-4 border-yellow-500 rounded-lg p-3 flex flex-wrap justify-between items-center retro-shadow mb-2">
+        <div class="flex items-center space-x-4">
+            <span class="text-yellow-400 text-xs md:text-sm">SCORE: <span id="scoreVal" class="text-white">0</span></span>
+            <span class="text-cyan-400 text-xs md:text-sm">HIGH: <span id="highScoreVal" class="text-white">0</span></span>
+        </div>
+        <div class="text-center my-1 md:my-0">
+            <h1 class="text-red-500 text-lg md:text-2xl font-bold tracking-widest drop-shadow-[2px_2px_#000]">MAPPY</h1>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="text-pink-400 text-xs md:text-sm">LIVES: <span id="livesVal" class="text-white">3</span></span>
+            <button id="soundToggle" class="bg-yellow-500 hover:bg-yellow-400 text-black px-2 py-1 text-xs rounded retro-button font-bold">🔊 AUDIO</button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="relative w-full max-w-4xl flex flex-col items-center justify-center bg-black border-4 border-slate-700 rounded-lg overflow-hidden retro-shadow">
+        
+        <!-- Canvas -->
+        <canvas id="gameCanvas" class="w-full aspect-[4/3] bg-black block"></canvas>
+
+        <!-- Start / Game Over Overlay -->
+        <div id="overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 text-center z-20">
+            <h2 id="overlayTitle" class="text-yellow-400 text-2xl md:text-4xl mb-4 animate-bounce">MAPPY ARCADE</h2>
+            <p id="overlayDesc" class="text-xs md:text-sm text-slate-300 max-w-md mb-6 leading-relaxed">
+                ¡Recoge todos los objetos robados (cuadros, radios, televisores)! 
+                Usa los trampolines para moverte entre pisos y abre puertas para aturdir a los gatos enemigos (Meowkies). 
+                ¡Cuidado con rebotar demasiado en el mismo trampolines o se romperá!
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="startBtn" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg border-2 border-white retro-button text-sm">
+                    INICIAR JUEGO
+                </button>
+                <button id="instructionsBtn" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg border-2 border-white retro-button text-sm">
+                    CONTROLES
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Modal Overlay -->
+        <div id="controlsModal" class="absolute inset-0 bg-black/90 hidden flex flex-col items-center justify-center p-6 text-center z-30">
+            <h3 class="text-yellow-400 text-xl mb-4">CONTROLES</h3>
+            <div class="text-left text-xs text-slate-200 space-y-3 mb-6 bg-slate-900 p-4 rounded border-2 border-slate-700 max-w-sm">
+                <p>⬅️ ➡️ / A, D: Moverse Izquierda / Derecha</p>
+                <p>⬆️ ⬇️ / W, S: Cambiar de Piso / Entrar</p>
+                <p>ESPACIO / E: Abrir Puerta (Aturde Gatos)</p>
+                <p>📱 Táctil: Usa los botones virtuales en pantalla</p>
+            </div>
+            <button id="closeControlsBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded border-2 border-white retro-button text-xs">
+                VOLVER
+            </button>
+        </div>
+
+    </main>
+
+    <!-- On-Screen Virtual Controls for Mobile / Touch -->
+    <footer class="w-full max-w-4xl mt-3 flex justify-between items-center px-2">
+        <div class="flex space-x-2">
+            <button id="btnLeft" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white w-14 h-14 rounded-full font-bold text-xl border-2 border-slate-500 flex items-center justify-center shadow-lg">◀</button>
+            <button id="btnRight" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white w-14 h-14 rounded-full font-bold text-xl border-2 border-slate-500 flex items-center justify-center shadow-lg">▶</button>
+        </div>
+        <div class="flex space-x-2">
+            <button id="btnUp" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white w-12 h-12 rounded-full font-bold text-lg border-2 border-slate-500 flex items-center justify-center shadow-lg">▲</button>
+            <button id="btnDown" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white w-12 h-12 rounded-full font-bold text-lg border-2 border-slate-500 flex items-center justify-center shadow-lg">▼</button>
+            <button id="btnAction" class="bg-red-600 hover:bg-red-500 active:bg-red-400 text-white px-4 h-12 rounded-xl font-bold text-xs border-2 border-white shadow-lg">PUERTA</button>
+        </div>
+    </footer>
+
+    <script>
+        // --- Web Audio API Sound Synthesizer ---
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playBounce() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playCollect() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime + 0.08);
+                osc.frequency.setValueAtTime(900, this.ctx.currentTime + 0.16);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playDoor() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(110, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playDie() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(60, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+        }
+
+        const soundManager = new SoundManager();
+
+        // --- Game Setup & Canvas ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Virtual internal canvas dimensions
+        const GAME_WIDTH = 640;
+        const GAME_HEIGHT = 480;
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+
+        // Game State
+        let gameState = 'START'; // START, PLAYING, GAMEOVER, WIN
+        let score = 0;
+        let highScore = localStorage.getItem('mappy_highscore') || 0;
+        let lives = 3;
+        let currentLevel = 1;
+
+        document.getElementById('highScoreVal').textContent = highScore;
+
+        // Mansion Layout Definition
+        // 5 floors (0 is bottom, 4 is top)
+        const FLOOR_Y = [400, 320, 240, 160, 80];
+        
+        let player = {
+            x: 100,
+            y: FLOOR_Y[0] - 24,
+            width: 24,
+            height: 24,
+            vx: 0,
+            speed: 3.5,
+            floor: 0,
+            isBouncing: true,
+            bounceTimer: 0,
+            bounceCount: 0, // Too many bounces breaks trampoline
+            facing: 1 // 1 right, -1 left
+        };
+
+        let items = [];
+        let enemies = [];
+        let doors = [];
+        let trampolines = [];
+
+        function initLevel() {
+            items = [];
+            enemies = [];
+            doors = [];
+            trampolines = [];
+
+            // Create items (Paintings, Radios, TVs, Computers) on floors 1 to 4
+            const itemTypes = ['painting', 'radio', 'tv', 'computer'];
+            for (let f = 1; f < 5; f++) {
+                // 2 to 3 items per floor
+                let count = 2 + Math.floor(Math.random() * 2);
+                let occupiedX = [];
+                for (let i = 0; i < count; i++) {
+                    let rx;
+                    do {
+                        rx = 80 + Math.floor(Math.random() * 450);
+                    } while (occupiedX.some(x => Math.abs(x - rx) < 70));
+                    occupiedX.push(rx);
+
+                    items.push({
+                        x: rx,
+                        y: FLOOR_Y[f] - 22,
+                        width: 18,
+                        height: 22,
+                        type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+                        collected: false,
+                        points: f * 100
+                    });
+                }
+            }
+
+            // Create Doors on each floor
+            for (let f = 1; f < 5; f++) {
+                doors.push({
+                    x: 40 + Math.floor(Math.random() * 520),
+                    y: FLOOR_Y[f] - 30,
+                    width: 24,
+                    height: 30,
+                    floor: f,
+                    open: false,
+                    openTimer: 0
+                });
+            }
+
+            // Create Trampolines between floors
+            for (let f = 0; f < 4; f++) {
+                trampolines.push({
+                    x: 120 + f * 120,
+                    y: FLOOR_Y[f] - 8,
+                    width: 40,
+                    height: 8,
+                    floor: f,
+                    broken: false
+                });
+            }
+
+            // Create Enemies (Meowkies)
+            for (let i = 0; i < 2 + currentLevel; i++) {
+                let ef = 1 + Math.floor(Math.random() * 4);
+                enemies.push({
+                    x: 200 + i * 100,
+                    y: FLOOR_Y[ef] - 24,
+                    width: 24,
+                    height: 24,
+                    floor: ef,
+                    vx: (Math.random() < 0.5 ? 1 : -1) * (1.5 + currentLevel * 0.2),
+                    stunned: false,
+                    stunTimer: 0
+                });
+            }
+
+            player.x = 80;
+            player.floor = 0;
+            player.y = FLOOR_Y[0] - 24;
+            player.bounceCount = 0;
+        }
+
+        // --- Keyboard Controls ---
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if (e.key === ' ' || e.key.toLowerCase() === 'e') {
+                triggerAction();
+            }
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            keys[e.key] = false;
+        });
+
+        // Virtual Touch Controls
+        const bindButton = (id, keyName) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; if(keyName === 'Action') triggerAction(); });
+            el.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            el.addEventListener('mousedown', (e) => { keys[keyName] = true; if(keyName === 'Action') triggerAction(); });
+            el.addEventListener('mouseup', (e) => { keys[keyName] = false; });
+        };
+        bindButton('btnLeft', 'ArrowLeft');
+        bindButton('btnRight', 'ArrowRight');
+        bindButton('btnUp', 'ArrowUp');
+        bindButton('btnDown', 'ArrowDown');
+        bindButton('btnAction', 'Action');
+
+        function triggerAction() {
+            if (gameState !== 'PLAYING') return;
+            // Check nearby doors to open
+            doors.forEach(d => {
+                if (d.floor === player.floor && Math.abs(d.x - player.x) < 40) {
+                    d.open = true;
+                    d.openTimer = 40; // frames open
+                    soundManager.playDoor();
+
+                    // Stun enemies on the same floor in the direction or proximity
+                    enemies.forEach(en => {
+                        if (en.floor === d.floor && Math.abs(en.x - d.x) < 90) {
+                            en.stunned = true;
+                            en.stunTimer = 180; // 3 seconds stun
+                            en.vx = 0;
+                            score += 200;
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Game Logic Update ---
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Player horizontal movement
+            player.vx = 0;
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                player.vx = -player.speed;
+                player.facing = -1;
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                player.vx = player.speed;
+                player.facing = 1;
+            }
+
+            player.x += player.vx;
+            // Screen boundaries
+            if (player.x < 20) player.x = 20;
+            if (player.x > GAME_WIDTH - 44) player.x = GAME_WIDTH - 44;
+
+            // Floor changing with Up/Down keys
+            if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+                if (player.floor < 4) {
+                    player.floor++;
+                    player.y = FLOOR_Y[player.floor] - 24;
+                    soundManager.playBounce();
+                    keys['ArrowUp'] = false;
+                    keys['w'] = false;
+                    keys['W'] = false;
+                }
+            }
+            if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+                if (player.floor > 0) {
+                    player.floor--;
+                    player.y = FLOOR_Y[player.floor] - 24;
+                    soundManager.playBounce();
+                    keys['ArrowDown'] = false;
+                    keys['s'] = false;
+                    keys['S'] = false;
+                }
+            }
+
+            // Trampoline bounce effect simulation on floor 0
+            if (player.floor === 0) {
+                player.bounceTimer++;
+                player.y = FLOOR_Y[0] - 24 + Math.sin(player.bounceTimer * 0.15) * 6;
+            } else {
+                player.y = FLOOR_Y[player.floor] - 24;
+            }
+
+            // Update Doors
+            doors.forEach(d => {
+                if (d.open) {
+                    d.openTimer--;
+                    if (d.openTimer <= 0) d.open = false;
+                }
+            });
+
+            // Update Enemies
+            enemies.forEach(en => {
+                if (en.stunned) {
+                    en.stunTimer--;
+                    if (en.stunTimer <= 0) {
+                        en.stunned = false;
+                        en.vx = (Math.random() < 0.5 ? 1 : -1) * (1.5 + currentLevel * 0.2);
+                    }
+                } else {
+                    en.x += en.vx;
+                    // Bounce at walls
+                    if (en.x < 30 || en.x > GAME_WIDTH - 50) {
+                        en.vx *= -1;
+                    }
+                    // Random floor changes for Meowkies
+                    if (Math.random() < 0.005) {
+                        let availableFloors = [1, 2, 3, 4];
+                        en.floor = availableFloors[Math.floor(Math.random() * availableFloors.length)];
+                        en.y = FLOOR_Y[en.floor] - 24;
+                    }
+                }
+
+                // Collision with player
+                if (en.floor === player.floor && Math.abs(en.x - player.x) < 18) {
+                    if (en.stunned) {
+                        // Knock out stunned enemy
+                        score += 500;
+                        en.x = -100; // send off screen temporarily or respawn
+                        en.floor = 1 + Math.floor(Math.random() * 4);
+                        en.y = FLOOR_Y[en.floor] - 24;
+                        en.stunned = false;
+                        soundManager.playCollect();
+                    } else {
+                        // Player loses life
+                        loseLife();
+                    }
+                }
+            });
+
+            // Check item collection
+            items.forEach(it => {
+                if (!it.collected && it.y >= FLOOR_Y[player.floor] - 30 && it.y <= FLOOR_Y[player.floor] && Math.abs(it.x - player.x) < 20) {
+                    it.collected = true;
+                    score += it.points;
+                    soundManager.playCollect();
+                }
+            });
+
+            // Check level win condition (all items collected)
+            if (items.every(it => it.collected)) {
+                currentLevel++;
+                score += 1000;
+                initLevel();
+            }
+
+            // Update DOM Score & Lives
+            document.getElementById('scoreVal').textContent = score;
+            document.getElementById('livesVal').textContent = lives;
+        }
+
+        function loseLife() {
+            lives--;
+            soundManager.playDie();
+            if (lives <= 0) {
+                gameState = 'GAMEOVER';
+                document.getElementById('overlayTitle').textContent = "FIN DEL JUEGO";
+                document.getElementById('overlayDesc').textContent = `Puntuación final: ${score}. ¿Quieres intentarlo de nuevo?`;
+                document.getElementById('startBtn').textContent = "JUGAR DE NUEVO";
+                document.getElementById('overlay').classList.remove('hidden');
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('mappy_highscore', highScore);
+                    document.getElementById('highScoreVal').textContent = highScore;
+                }
+            } else {
+                // Reset player position
+                player.x = 80;
+                player.floor = 0;
+            }
+        }
+
+        // --- Render Graphics ---
+        function render() {
+            // Clear screen
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // Draw Mansion Floors & Walls
+            for (let f = 0; f < 5; f++) {
+                let fy = FLOOR_Y[f];
+                // Floor platform structure
+                ctx.fillStyle = '#fde047'; // golden retro platform color
+                ctx.fillRect(20, fy, GAME_WIDTH - 40, 6);
+                
+                // Platform supports / pixel pattern
+                ctx.fillStyle = '#ca8a04';
+                for (let px = 30; px < GAME_WIDTH - 40; px += 35) {
+                    ctx.fillRect(px, fy + 6, 12, 10);
+                }
+            }
+
+            // Side vertical walls
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(15, 74, 8, 330);
+            ctx.fillRect(GAME_WIDTH - 23, 74, 8, 330);
+
+            // Draw Trampolines
+            trampolines.forEach(t => {
+                ctx.fillStyle = '#ec4899';
+                ctx.fillRect(t.x, t.y - 4, t.width, 6);
+                ctx.fillStyle = '#f472b6';
+                ctx.fillRect(t.x + 4, t.y - 2, t.width - 8, 2);
+            });
+
+            // Draw Doors
+            doors.forEach(d => {
+                ctx.fillStyle = d.open ? '#22c55e' : '#a855f7';
+                ctx.fillRect(d.x, d.y, d.width, d.height);
+                // Door knob
+                ctx.fillStyle = '#fde047';
+                ctx.fillRect(d.x + (d.open ? 16 : 4), d.y + 12, 4, 4);
+            });
+
+            // Draw Items
+            items.forEach(it => {
+                if (!it.collected) {
+                    if (it.type === 'painting') {
+                        ctx.fillStyle = '#854d0e';
+                        ctx.fillRect(it.x, it.y, it.width, it.height);
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.fillRect(it.x + 2, it.y + 2, it.width - 4, it.height - 4);
+                    } else if (it.type === 'radio') {
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.fillRect(it.x, it.y + 4, it.width, it.height - 4);
+                        ctx.fillStyle = '#ef4444';
+                        ctx.fillRect(it.x + 3, it.y + 7, 4, 4);
+                        ctx.fillRect(it.x + 11, it.y + 7, 4, 4);
+                    } else if (it.type === 'tv') {
+                        ctx.fillStyle = '#475569';
+                        ctx.fillRect(it.x, it.y, it.width, it.height);
+                        ctx.fillStyle = '#22c55e';
+                        ctx.fillRect(it.x + 2, it.y + 2, it.width - 4, 12);
+                    } else {
+                        // computer
+                        ctx.fillStyle = '#cbd5e1';
+                        ctx.fillRect(it.x, it.y + 6, it.width, 14);
+                        ctx.fillStyle = '#3b82f6';
+                        ctx.fillRect(it.x + 2, it.y + 8, it.width - 4, 8);
+                    }
+                }
+            });
+
+            // Draw Enemies (Meowkies - Pink cats)
+            enemies.forEach(en => {
+                ctx.fillStyle = en.stunned ? '#9333ea' : '#ec4899';
+                // Body
+                ctx.fillRect(en.x, en.y, en.width, en.height);
+                // Ears
+                ctx.fillRect(en.x + 2, en.y - 4, 5, 4);
+                ctx.fillRect(en.x + 17, en.y - 4, 5, 4);
+                // Eyes / Face
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(en.x + 4, en.y + 6, 4, 4);
+                ctx.fillRect(en.x + 16, en.y + 6, 4, 4);
+                if (en.stunned) {
+                    ctx.fillStyle = '#fde047';
+                    ctx.font = '8px sans-serif';
+                    ctx.fillText('Z', en.x + 8, en.y - 6);
+                }
+            });
+
+            // Draw Player (Mappy - Police Mouse)
+            ctx.fillStyle = '#3b82f6'; // Blue police uniform
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Cap
+            ctx.fillStyle = '#1e3a8a';
+            ctx.fillRect(player.x + (player.facing === 1 ? 8 : 0), player.y - 4, 16, 6);
+            // Face / Ears
+            ctx.fillStyle = '#fbcfe8';
+            ctx.fillRect(player.x + 4, player.y + 4, 16, 12);
+            // Eyes
+            ctx.fillStyle = '#000000';
+            let eyeOffset = player.facing === 1 ? 14 : 4;
+            ctx.fillRect(player.x + eyeOffset, player.y + 8, 3, 3);
+        }
+
+        // --- Main Game Loop ---
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- UI Event Listeners ---
+        document.getElementById('startBtn').addEventListener('click', () => {
+            soundManager.init();
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            initLevel();
+            gameState = 'PLAYING';
+            document.getElementById('overlay').classList.add('hidden');
+        });
+
+        document.getElementById('instructionsBtn').addEventListener('click', () => {
+            document.getElementById('controlsModal').classList.remove('hidden');
+        });
+
+        document.getElementById('closeControlsBtn').addEventListener('click', () => {
+            document.getElementById('controlsModal').classList.add('hidden');
+        });
+
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            soundManager.enabled = !soundManager.enabled;
+            document.getElementById('soundToggle').textContent = soundManager.enabled ? "🔊 AUDIO" : "🔇 AUDIO";
+        });
+
+        // Initial render preview
+        initLevel();
+        render();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
