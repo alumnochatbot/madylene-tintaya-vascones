@@ -323,6 +323,18 @@
       box-shadow: 0 6px 32px rgba(245, 158, 11, 0.85);
     }
 
+    .btn-lode-glow {
+      background: linear-gradient(135deg, #b45309 0%, #f59e0b 50%, #d97706 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 22px rgba(245, 158, 11, 0.55);
+      border: 1px solid rgba(254, 240, 138, 0.6);
+    }
+
+    .btn-lode-glow:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 32px rgba(245, 158, 11, 0.85);
+    }
+
     .btn-outline {
       background: rgba(168, 85, 247, 0.12);
       color: var(--text-primary);
@@ -725,6 +737,11 @@
     .project-card.card-donkey {
       border: 1.8px solid #dc2626;
       box-shadow: 0 10px 30px rgba(220, 38, 38, 0.35);
+    }
+
+    .project-card.card-lode {
+      border: 1.8px solid #f59e0b;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.35);
     }
 
     .project-card:hover {
@@ -1398,15 +1415,18 @@
         </h1>
         
         <p class="hero-description">
-          ¡Hola! Soy <strong>Madylene Tintaya</strong>, estudiante apasionada de la <strong>Unidad Educativa Cambridge</strong> en Santa Cruz de la Sierra, Bolivia. Fusiono mecánicas gamer competitivas, algoritmos de Inteligencia Artificial y diseño CyberGlow neón. ¡Explora y juega en vivo a mis 8 títulos oficiales: <strong>Donkey Kong</strong>, <strong>Super Mario Bros</strong>, <strong>Crossy Road</strong>, <strong>Ratón & Queso</strong>, <strong>Hatsune Miku</strong>, <strong>Barbie Dream</strong>, <strong>Dig Dug</strong> y <strong>Zuma Deluxe</strong>! ✨👾
+          ¡Hola! Soy <strong>Madylene Tintaya</strong>, estudiante apasionada de la <strong>Unidad Educativa Cambridge</strong> en Santa Cruz de la Sierra, Bolivia. Fusiono mecánicas gamer competitivas, algoritmos de Inteligencia Artificial y diseño CyberGlow neón. ¡Explora y juega en vivo a mis 9 títulos oficiales: <strong>Lode Runner</strong>, <strong>Donkey Kong</strong>, <strong>Super Mario Bros</strong>, <strong>Crossy Road</strong>, <strong>Ratón & Queso</strong>, <strong>Hatsune Miku</strong>, <strong>Barbie Dream</strong>, <strong>Dig Dug</strong> y <strong>Zuma Deluxe</strong>! ✨👾
         </p>
 
         <!-- Official Live Game Showcase Bar in Hero -->
         <div class="hero-live-box">
           <div class="hero-live-box-header">
-            <span>🦍 🍄 🐸 🐔 🧀 🎮 JUEGOS OFICIALES EN VIVO 🎤 🎀 ⛏️</span>
+            <span>🏃‍♂️ 🦍 🍄 🐸 🐔 🧀 🎮 JUEGOS OFICIALES EN VIVO 🎤 🎀 ⛏️</span>
           </div>
           <div class="hero-live-showcase">
+            <a href="loderunner/" target="_blank" rel="noopener noreferrer" class="btn btn-lode-glow" style="font-size: 0.94rem; padding: 0.8rem 1.5rem;">
+              🏃‍♂️ Jugar Lode Runner 🏆
+            </a>
             <a href="donkeykon/" target="_blank" rel="noopener noreferrer" class="btn btn-donkey-glow" style="font-size: 0.94rem; padding: 0.8rem 1.5rem;">
               🦍 Jugar Donkey Kong Arcade 🍌
             </a>
@@ -1451,8 +1471,8 @@
             <div class="stat-desc">Quests & Juegos IA</div>
           </div>
           <div class="stat-item">
-            <div class="stat-val" style="color: #34d399; -webkit-text-fill-color: initial;">8 EN VIVO</div>
-            <div class="stat-desc">Donkey Kong, Mario, Crossy, Ratón, Miku, Barbie, Dig Dug & Zuma</div>
+            <div class="stat-val" style="color: #34d399; -webkit-text-fill-color: initial;">9 EN VIVO</div>
+            <div class="stat-desc">Lode Runner, Donkey Kong, Mario, Crossy, Ratón, Miku, Barbie, Dig Dug & Zuma</div>
           </div>
           <div class="stat-item">
             <div class="stat-val">60+ FPS</div>
@@ -1614,11 +1634,12 @@
 
             <div class="faq-item active">
               <div class="faq-question">
-                <span>¿Cómo jugar en vivo a los 8 videojuegos destacados?</span>
+                <span>¿Cómo jugar en vivo a los 9 videojuegos destacados?</span>
                 <span class="faq-toggle-icon">&#9662;</span>
               </div>
               <div class="faq-answer">
-                ¡Los 8 juegos están completamente desplegados y listos para jugar en tu navegador! Puedes hacer clic en los botones de acceso directo en el Hero o ingresar por sus enlaces:<br><br>
+                ¡Los 9 juegos están completamente desplegados y listos para jugar en tu navegador! Puedes hacer clic en los botones de acceso directo en el Hero o ingresar por sus enlaces:<br><br>
+                🏃‍♂️ <strong>Lode Runner Classic (100 Niveles):</strong> <a href="loderunner/" target="_blank" rel="noopener noreferrer" style="color: #f59e0b; font-weight: 700;">loderunner/</a><br>
                 🦍 <strong>Donkey Kong Classic Arcade:</strong> <a href="donkeykon/" target="_blank" rel="noopener noreferrer" style="color: #ef4444; font-weight: 700;">donkeykon/</a><br>
                 🍄 <strong>Super Mario Bros Classic Edition:</strong> <a href="mariobros/" target="_blank" rel="noopener noreferrer" style="color: #ef4444; font-weight: 700;">mariobros/</a><br>
                 🐸 <strong>Zuma Deluxe: Temple of the Sun:</strong> <a href="zumadeluxe/" target="_blank" rel="noopener noreferrer" style="color: #fbbf24; font-weight: 700;">zumadeluxe/</a><br>
@@ -1786,9 +1807,10 @@
 
     <div class="drawer-chat-area" id="drawer-chat-area">
       <div class="chat-bubble bot">
-        ¡Hola player! 👋✨ Bienvenid@ al cuartel digital de <strong>Madylene Tintaya</strong> de Cambridge College. ¡Ya puedes jugar en vivo a <strong>Donkey Kong</strong> 🦍, <strong>Super Mario Bros</strong> 🍄, <strong>Zuma Deluxe</strong> 🐸, <strong>Crossy Road</strong> 🐔🚦, <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku Neon Rhythm</strong> 🎤, <strong>Barbie Dream Runway</strong> 🎀 y <strong>Dig Dug Retro Arcade</strong> ⛏️! ¿A cuál quieres ingresar hoy? 🎮💖
+        ¡Hola player! 👋✨ Bienvenid@ al cuartel digital de <strong>Madylene Tintaya</strong> de Cambridge College. ¡Ya puedes jugar en vivo a <strong>Lode Runner</strong> 🏃‍♂️, <strong>Donkey Kong</strong> 🦍, <strong>Super Mario Bros</strong> 🍄, <strong>Zuma Deluxe</strong> 🐸, <strong>Crossy Road</strong> 🐔🚦, <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku Neon Rhythm</strong> 🎤, <strong>Barbie Dream Runway</strong> 🎀 y <strong>Dig Dug Retro Arcade</strong> ⛏️! ¿A cuál quieres ingresar hoy? 🎮💖
       </div>
       <div class="quick-chips">
+        <button class="chip-btn" data-query="¿Cómo jugar Lode Runner?">Jugar Lode Runner 🏃‍♂️</button>
         <button class="chip-btn" data-query="¿Cómo jugar Donkey Kong?">Jugar Donkey Kong 🦍</button>
         <button class="chip-btn" data-query="¿Cómo jugar Super Mario Bros?">Jugar Super Mario Bros 🍄</button>
         <button class="chip-btn" data-query="¿Cómo jugar Zuma Deluxe?">Jugar Zuma Deluxe 🐸</button>
@@ -1832,7 +1854,7 @@
         🌸 Unidad Educativa Cambridge &bull; Santa Cruz de la Sierra, Bolivia
       </p>
       <p style="color: var(--text-muted); font-size: 0.85rem;">
-        Leveling Up the AI Future &bull; Temática Neón Morada Cyberpunk &bull; Donkey Kong, Super Mario Bros, Crossy Road, Ratón & Queso, Miku, Barbie, Dig Dug & Zuma Deluxe en vivo.
+        Leveling Up the AI Future &bull; Temática Neón Morada Cyberpunk &bull; Lode Runner, Donkey Kong, Super Mario Bros, Crossy Road, Ratón & Queso, Miku, Barbie, Dig Dug & Zuma Deluxe en vivo.
       </p>
     </div>
   </footer>
@@ -1840,7 +1862,7 @@
   <script>
     const CONFIG = {
       phone: "59170000000",
-      storageKey: "madylene_gamer_portfolio_v12", // Clave v12 actualizada con Donkey Kong Arcade
+      storageKey: "madylene_gamer_portfolio_v13", // Clave v13 actualizada con Lode Runner Classic
       crossyGameUrl: "https://alumnochatbot.github.io/madylene-tintaya-vascones/crossyroad/",
       ratonGameUrl: "https://share.gemini.google/um8eQ8frNsih",
       mikuGameUrl: "https://share.gemini.google/MqLPc3esy2QG",
@@ -1848,10 +1870,28 @@
       digdugGameUrl: "digdug/",
       zumaGameUrl: "zumadeluxe/",
       marioGameUrl: "mariobros/",
-      donkeyGameUrl: "donkeykon/"
+      donkeyGameUrl: "donkeykon/",
+      lodeGameUrl: "loderunner/"
     };
 
     const DEFAULT_PROJECTS = [
+      {
+        id: "proj-lode",
+        title: "Lode Runner: Classic 100 Levels Edition",
+        category: "juegos",
+        categoryLabel: "Videojuegos & Físicas",
+        desc: "¡El legendario clásico retro de plataformas y puzle con 100 niveles completos generados! Corre, trepa por escaleras y barras de acero, cava trampas en los ladrillos y recolecta todos los lingotes de oro.",
+        icon: "🏃‍♂️",
+        tags: ["Lode Runner", "Retro Classic", "Juego Oficial", "100 Niveles", "Puzle & Oro"],
+        isLiveGame: true,
+        liveUrl: CONFIG.lodeGameUrl,
+        themeClass: "card-lode",
+        liveBtnClass: "btn-lode-glow",
+        liveBtnText: "🏃‍♂️ Jugar en Vivo",
+        badgeType: "gold",
+        interactiveType: "lode",
+        demoPrompt: "🏃‍♂️ [Lode Runner Engine v1.0]: 100 niveles cargados a 60 FPS. Motor de excavación de ladrillos con timer de regeneración, escalada de barras y guardias enemigos activo."
+      },
       {
         id: "proj-donkey",
         title: "Donkey Kong: Classic Arcade Edition",
@@ -2235,7 +2275,45 @@
 
       // Custom interactive widget based on game type
       let interactiveWidgetHtml = "";
-      if (proj.id === "proj-donkey") {
+      if (proj.id === "proj-lode") {
+        interactiveWidgetHtml = `
+          <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; border-radius: var(--radius-sm); padding: 1.4rem; margin-bottom: 1.5rem; text-align: center; box-shadow: 0 0 22px rgba(245, 158, 11, 0.28);">
+            <div style="font-size: 1.05rem; color: #fef08a; font-weight: 800; margin-bottom: 0.4rem; letter-spacing: 0.5px;">🏃‍♂️ ¡JUEGO OFICIAL DE LODE RUNNER EN VIVO (100 NIVELES)! 🏆</div>
+            <p style="color: #fde68a; font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5;">
+              ¡Acción clásica retro de plataformas! Cava ladrillos para atrapar guardias, trepa por escaleras y barras suspendidas, y recolecta todo el oro a través de 100 desafiantes niveles.
+            </p>
+            <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.1rem;">
+              <a href="${proj.liveUrl || CONFIG.lodeGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-lode-glow" style="flex:1; min-width:240px; font-size: 0.98rem; padding: 0.85rem 1.4rem;">
+                🚀 Abrir Lode Runner en Pantalla Completa 🏃‍♂️
+              </a>
+              <button id="toggle-embed-lode" class="btn btn-outline" style="font-size:0.86rem;">
+                🖥️ Ver / Ocultar Vista Previa Integrada
+              </button>
+            </div>
+
+            <!-- Iframe embebible opcional -->
+            <div id="embed-lode-container" style="display:none; margin-bottom:1rem; border-radius:12px; overflow:hidden; border:2px solid #f59e0b; box-shadow:0 8px 24px rgba(0,0,0,0.7);">
+              <iframe src="${proj.liveUrl || CONFIG.lodeGameUrl}" style="width:100%; height:480px; border:none; background:#000;" loading="lazy" allowfullscreen></iframe>
+            </div>
+
+            <!-- Mini-simulador interactivo de Lode Runner -->
+            <div style="padding: 1rem; background: rgba(9, 3, 20, 0.7); border-radius: var(--radius-sm); border: 1px dashed rgba(245, 158, 11, 0.4);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;">
+                <span id="lode-status" style="font-family: var(--font-code); font-size: 0.88rem; color: #fef08a; font-weight: 700;">🏃‍♂️ NIVEL: 1/100 &bull; ORO: 0/5 &bull; SCORE: 000000</span>
+                <span id="lode-hazard" style="font-size:0.8rem; color:#86efac; font-weight:700;">🟢 Plataforma despejada</span>
+              </div>
+              <div id="lode-stage-view" style="font-family: var(--font-code); font-size: 1.15rem; letter-spacing: 5px; padding: 0.6rem; background: #000000; border-radius: 6px; margin-bottom: 0.8rem; overflow-x: auto;">
+                🧱 &bull; 🏃‍♂️ &bull; 💰 &bull; 🪜 &bull; 🧱 &bull; 👮‍♂️ &bull; 🏆
+              </div>
+              <div style="display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap;">
+                <button class="btn btn-lode-glow btn-sm" id="btn-lode-gold">Recoger Oro (💰) ✨</button>
+                <button class="btn btn-outline btn-sm" id="btn-lode-dig">Cavar Bloque (⛏️) 🕳️</button>
+                <button class="btn btn-outline btn-sm" id="btn-lode-climb">Subir Escalera (🪜) ⬆️</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (proj.id === "proj-donkey") {
         interactiveWidgetHtml = `
           <div style="background: rgba(220, 38, 38, 0.15); border: 1.5px solid #dc2626; border-radius: var(--radius-sm); padding: 1.4rem; margin-bottom: 1.5rem; text-align: center; box-shadow: 0 0 22px rgba(220, 38, 38, 0.28);">
             <div style="font-size: 1.05rem; color: #fef08a; font-weight: 800; margin-bottom: 0.4rem; letter-spacing: 0.5px;">🦍 ¡JUEGO OFICIAL DE DONKEY KONG EN VIVO! 🍌</div>
@@ -2528,6 +2606,81 @@
       `;
 
       modal.classList.add("active");
+
+      // Interactive mini-game logic for Lode Runner
+      if (proj.id === "proj-lode") {
+        let lodeScore = 0;
+        let lodeLevel = 1;
+        let lodeGold = 0;
+        const totalGold = 5;
+        const toggleEmbedBtn = document.getElementById("toggle-embed-lode");
+        const embedContainer = document.getElementById("embed-lode-container");
+        const goldBtn = document.getElementById("btn-lode-gold");
+        const digBtn = document.getElementById("btn-lode-dig");
+        const climbBtn = document.getElementById("btn-lode-climb");
+        const statusView = document.getElementById("lode-status");
+        const hazardView = document.getElementById("lode-hazard");
+
+        if (toggleEmbedBtn && embedContainer) {
+          toggleEmbedBtn.addEventListener("click", () => {
+            const isHidden = embedContainer.style.display === "none";
+            embedContainer.style.display = isHidden ? "block" : "none";
+            toggleEmbedBtn.textContent = isHidden ? "❌ Ocultar Vista Previa" : "🖥️ Ver Vista Previa Integrada";
+          });
+        }
+
+        const updateLodeUI = () => {
+          if (statusView) statusView.innerHTML = `🏃‍♂️ NIVEL: ${lodeLevel}/100 &bull; ORO: ${lodeGold}/${totalGold} &bull; SCORE: ${String(lodeScore).padStart(6, '0')}`;
+        };
+
+        if (goldBtn) {
+          goldBtn.addEventListener("click", () => {
+            lodeGold++;
+            lodeScore += 250;
+            if (lodeGold >= totalGold) {
+              lodeLevel = Math.min(100, lodeLevel + 1);
+              lodeGold = 0;
+              lodeScore += 1000;
+              showToast(`¡Completaste el nivel! Avanzando al Nivel ${lodeLevel} 🏆 +1000 pts`, "🌟");
+              if (hazardView) {
+                hazardView.innerHTML = "🏆 ¡Nivel completado! Nueva escalera de escape abierta";
+                hazardView.style.color = "#34d399";
+              }
+            } else {
+              showToast("¡Recogiste un lingote de oro! 💰 +250 pts", "✨");
+              if (hazardView) {
+                hazardView.innerHTML = `💰 Oro brillante recogido (${lodeGold}/${totalGold})`;
+                hazardView.style.color = "#fef08a";
+              }
+            }
+            updateLodeUI();
+          });
+        }
+
+        if (digBtn) {
+          digBtn.addEventListener("click", () => {
+            lodeScore += 75;
+            showToast("¡Cavaste un hueco en los ladrillos! 🕳️ Trampa lista (+75 pts)", "⛏️");
+            if (hazardView) {
+              hazardView.innerHTML = "🕳️ Guardia atrapado en el agujero excavado";
+              hazardView.style.color = "#38bdf8";
+            }
+            updateLodeUI();
+          });
+        }
+
+        if (climbBtn) {
+          climbBtn.addEventListener("click", () => {
+            lodeScore += 50;
+            showToast("¡Subiste por la escalera hacia la barra suspendida! 🪜 +50 pts", "🪜");
+            if (hazardView) {
+              hazardView.innerHTML = "🪜 Escalando plataforma superior...";
+              hazardView.style.color = "#c084fc";
+            }
+            updateLodeUI();
+          });
+        }
+      }
 
       // Interactive mini-game logic for Donkey Kong
       if (proj.id === "proj-donkey") {
@@ -3058,7 +3211,9 @@
           const q = query.toLowerCase();
           let reply = "";
 
-          if (q.includes("donkey") || q.includes("kong") || q.includes("mono") || q.includes("barril") || q.includes("viga") || q.includes("pauline")) {
+          if (q.includes("lode") || q.includes("runner") || q.includes("cavar") || q.includes("oro") || q.includes("escalera") || q.includes("guardia")) {
+            reply = `¡El legendario clásico <strong>Lode Runner Classic: 100 Niveles</strong> 🏃‍♂️🏆 está disponible para jugar en vivo! Cava bloques, esquiva guardias y recolecta todo el oro aquí:<br><br><a href="${CONFIG.lodeGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-lode-glow btn-sm" style="display:inline-flex; margin-top:4px;">🏃‍♂️ Jugar Lode Runner en Vivo 🏆</a>`;
+          } else if (q.includes("donkey") || q.includes("kong") || q.includes("mono") || q.includes("barril") || q.includes("viga") || q.includes("pauline")) {
             reply = `¡El legendario arcade <strong>Donkey Kong: Classic Arcade Edition</strong> 🦍🛢️ está disponible para jugar en vivo! Escala vigas, salta barriles y rescata a Pauline en sus 20 niveles aquí:<br><br><a href="${CONFIG.donkeyGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-donkey-glow btn-sm" style="display:inline-flex; margin-top:4px;">🦍 Jugar Donkey Kong en Vivo 🍌</a>`;
           } else if (q.includes("mario") || q.includes("bros") || q.includes("goomba") || q.includes("champiñon") || q.includes("champinon") || q.includes("fontanero")) {
             reply = `¡El clásico de NES <strong>Super Mario Bros: Classic Web Edition</strong> 🍄🌟 está disponible para jugar en vivo! Salta sobre Goombas y golpea bloques de interrogación aquí:<br><br><a href="${CONFIG.marioGameUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-mario-glow btn-sm" style="display:inline-flex; margin-top:4px;">🍄 Jugar Super Mario Bros en Vivo 🌟</a>`;
@@ -3077,7 +3232,7 @@
           } else if (q.includes("quién es") || q.includes("madylene") || q.includes("sobre")) {
             reply = "Madylene Tintaya es una talentosa gamer y desarrolladora de la <strong>Unidad Educativa Cambridge</strong> en Santa Cruz de la Sierra. Le apasiona crear videojuegos, diseñar interfaces estéticas e integrar Inteligencia Artificial. ✨🌸";
           } else if (q.includes("juego") || q.includes("proyecto") || q.includes("cuántos") || q.includes("todos")) {
-            reply = `¡Madylene cuenta con <strong>${projectsData.length} proyectos y videojuegos</strong>! Los 6 títulos jugables en vivo son <strong>Zuma Deluxe</strong> 🐸, <strong>Crossy Road</strong> 🐔, <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku</strong> 🎤, <strong>Barbie Dream</strong> 🎀 y <strong>Dig Dug</strong> ⛏️. ¡Todos disponibles en la sección de juegos! 🎮`;
+            reply = `¡Madylene cuenta con <strong>${projectsData.length} proyectos y videojuegos</strong>! Los 9 títulos jugables en vivo son <strong>Lode Runner</strong> 🏃‍♂️, <strong>Donkey Kong</strong> 🦍, <strong>Super Mario Bros</strong> 🍄, <strong>Zuma Deluxe</strong> 🐸, <strong>Crossy Road</strong> 🐔, <strong>Ratón & Queso</strong> 🧀, <strong>Hatsune Miku</strong> 🎤, <strong>Barbie Dream</strong> 🎀 y <strong>Dig Dug</strong> ⛏️. ¡Todos disponibles en la sección de juegos! 🎮`;
           } else if (q.includes("whatsapp") || q.includes("contacto") || q.includes("escribir")) {
             reply = "Puedes chatear directamente con ella haciendo clic en el botón flotante de WhatsApp en la esquina inferior derecha o usando el formulario de contacto. ¡Le encantará coordinar una partida de código! 💬💖";
           } else if (q.includes("cambridge") || q.includes("colegio") || q.includes("santa cruz")) {
