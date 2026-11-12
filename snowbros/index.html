@@ -1,1 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snow Bros - Arcade Remake</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+        }
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        /* CRT Scanline overlay effect */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 10;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
 
+    <!-- Header / Title -->
+    <header class="text-center mb-4">
+        <h1 class="text-2xl md:text-3xl font-bold text-yellow-400 drop-shadow-[0_3px_10px_rgba(234,179,8,0.5)] tracking-wider">SNOW BROS.</h1>
+        <p class="text-xs text-blue-300 mt-1">Nick & Tom Arcade Edition</p>
+    </header>
+
+    <!-- Game Cabinet Container -->
+    <div class="relative bg-slate-900 border-4 border-slate-700 rounded-xl shadow-2xl overflow-hidden crt max-w-full">
+        
+        <!-- Top HUD -->
+        <div class="bg-black px-4 py-2 flex justify-between items-center text-xs md:text-sm border-b-2 border-slate-800">
+            <div>
+                <span class="text-blue-400">1P</span> <span id="score-val" class="text-white">015650</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="text-red-400">HI</span> <span id="highscore-val" class="text-white">2194590</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-yellow-400">LIVES:</span>
+                <div id="lives-container" class="flex gap-1 text-base">⛄⛄⛄</div>
+            </div>
+        </div>
+
+        <!-- Canvas Game Screen -->
+        <div class="relative bg-slate-950 flex justify-center items-center">
+            <canvas id="gameCanvas" width="512" height="448" class="w-full max-w-[640px] h-auto pixelated block bg-cover" style="background: radial-gradient(circle, #3b0764 0%, #1e1b4b 100%);"></canvas>
+            
+            <!-- Overlay screens (Start / Game Over / Victory) -->
+            <div id="overlay-screen" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-6 z-20">
+                <h2 id="overlay-title" class="text-xl md:text-2xl text-yellow-400 mb-4 animate-pulse">PRESS START</h2>
+                <p id="overlay-desc" class="text-[10px] md:text-xs text-slate-300 max-w-md leading-relaxed mb-6">
+                    Use arrow keys or onscreen buttons to move and jump. Press SPACE or button to shoot snowballs! Cover enemies completely and push snowballs to clear the platform!
+                </p>
+                <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-lg shadow-lg text-sm transition transform hover:scale-105 active:scale-95 cursor-pointer">
+                    INSERT COIN / PLAY
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Controls for Mobile / Touch support -->
+        <div class="bg-black p-3 flex justify-between items-center border-t-2 border-slate-800">
+            <div class="flex gap-2">
+                <button id="btn-left" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold w-12 h-12 rounded-lg flex items-center justify-center text-lg touch-manipulation">◀</button>
+                <button id="btn-right" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold w-12 h-12 rounded-lg flex items-center justify-center text-lg touch-manipulation">▶</button>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-jump" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 text-white font-bold px-4 h-12 rounded-lg text-xs touch-manipulation shadow-md">JUMP</button>
+                <button id="btn-snow" class="bg-red-600 hover:bg-red-500 active:bg-red-400 text-white font-bold px-4 h-12 rounded-lg text-xs touch-manipulation shadow-md">SNOW</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions / Footer info -->
+    <footer class="mt-4 text-[10px] text-slate-400 text-center max-w-lg leading-relaxed">
+        <span class="text-yellow-400 font-bold">Controls:</span> A/D or Left/Right (Move), W or Up/Space (Jump), J or X (Throw Snow). Push snowballs to roll them across platforms!
+    </footer>
+
+    <script>
+        // --- SOUND SYNTHESIZER (Web Audio API) ---
+        class SoundManager {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playJump() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playSnow() {
+                if (!this.ctx) return;
+                // White noise puff for snow
+                let bufferSize = this.ctx.sampleRate * 0.1;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                let filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+            playFreeze() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+            playExplosion() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        }
+
+        const soundManager = new SoundManager();
+
+        // --- GAME ENGINE SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Virtual resolution 512x448 (double arcade resolution for clean scaling)
+        const V_WIDTH = 512;
+        const V_HEIGHT = 448;
+
+        let gameState = 'START'; // START, PLAYING, GAMEOVER, VICTORY
+        let score = 15650;
+        let highscore = 2194590;
+        let lives = 3;
+        let currentLevel = 1;
+
+        // Input state
+        const keys = { left: false, right: false, jump: false, snow: false };
+
+        // Game Entities
+        let player = {
+            x: 60,
+            y: 350,
+            width: 28,
+            height: 36,
+            vx: 0,
+            vy: 0,
+            speed: 3,
+            jumpForce: -10,
+            gravity: 0.45,
+            grounded: false,
+            facing: 'right',
+            color: '#3b82f6', // Nick blue suit
+            powerSpeed: false,
+            powerSnow: false
+        };
+
+        let platforms = [];
+        let enemies = [];
+        let projectiles = [];
+        let snowballs = [];
+        let powerups = [];
+
+        // Level Generator / Loader
+        function loadLevel(levelNum) {
+            platforms = [
+                // Ground
+                { x: 0, y: 416, width: 512, height: 32, type: 'normal' },
+                // Floor 1
+                { x: 40, y: 320, width: 240, height: 16, type: 'normal' },
+                { x: 320, y: 320, width: 152, height: 16, type: 'normal' },
+                // Slanted / Mid Platforms
+                { x: 100, y: 224, width: 312, height: 16, type: 'normal' },
+                // Top Platform
+                { x: 160, y: 128, width: 192, height: 16, type: 'normal' }
+            ];
+
+            // Spawn enemies depending on level
+            enemies = [
+                { x: 380, y: 280, width: 26, height: 30, vx: 1.2, vy: 0, grounded: true, snowLevel: 0, frozen: false, freezeTimer: 0, color: '#22c55e', type: 'goblin' },
+                { x: 120, y: 190, width: 26, height: 30, vx: -1.2, vy: 0, grounded: true, snowLevel: 0, frozen: false, freezeTimer: 0, color: '#ef4444', type: 'imp' },
+                { x: 220, y: 90, width: 26, height: 30, vx: 1.0, vy: 0, grounded: true, snowLevel: 0, frozen: false, freezeTimer: 0, color: '#a855f7', type: 'monster' }
+            ];
+
+            projectiles = [];
+            snowballs = [];
+            powerups = [];
+        }
+
+        // --- CONTROLS LISTENERS ---
+        window.addEventListener('keydown', (e) => {
+            soundManager.init();
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
+                if (!keys.jump && player.grounded) {
+                    player.vy = player.jumpForce;
+                    player.grounded = false;
+                    soundManager.playJump();
+                }
+                keys.jump = true;
+            }
+            if (e.code === 'KeyJ' || e.code === 'KeyX' || e.code === 'KeyK') {
+                if (!keys.snow) {
+                    shootSnow();
+                }
+                keys.snow = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.jump = false;
+            if (e.code === 'KeyJ' || e.code === 'KeyX' || e.code === 'KeyK') keys.snow = false;
+        });
+
+        // Touch buttons
+        document.getElementById('btn-left').addEventListener('touchstart', () => { soundManager.init(); keys.left = true; });
+        document.getElementById('btn-left').addEventListener('touchend', () => { keys.left = false; });
+        document.getElementById('btn-right').addEventListener('touchstart', () => { soundManager.init(); keys.right = true; });
+        document.getElementById('btn-right').addEventListener('touchend', () => { keys.right = false; });
+        document.getElementById('btn-jump').addEventListener('touchstart', () => {
+            soundManager.init();
+            if (player.grounded) { player.vy = player.jumpForce; player.grounded = false; soundManager.playJump(); }
+        });
+        document.getElementById('btn-snow').addEventListener('touchstart', () => { soundManager.init(); shootSnow(); });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            soundManager.init();
+            startGame();
+        });
+
+        function startGame() {
+            gameState = 'PLAYING';
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            loadLevel(currentLevel);
+            document.getElementById('overlay-screen').classList.add('hidden');
+        }
+
+        // --- SHOOTING MECHANIC ---
+        function shootSnow() {
+            if (gameState !== 'PLAYING') return;
+            soundManager.playSnow();
+            let pRange = player.powerSnow ? 60 : 35;
+            projectiles.push({
+                x: player.facing === 'right' ? player.x + player.width : player.x - 15,
+                y: player.y + 8,
+                width: 15,
+                height: 15,
+                vx: player.facing === 'right' ? 7 : -7,
+                range: pRange,
+                traveled: 0
+            });
+        }
+
+        // --- AABB COLLISION HELPER ---
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // --- GAME UPDATE LOOP ---
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Player movement
+            let currentSpeed = player.powerSpeed ? 4.5 : 3;
+            if (keys.left) {
+                player.vx = -currentSpeed;
+                player.facing = 'left';
+            } else if (keys.right) {
+                player.vx = currentSpeed;
+                player.facing = 'right';
+            } else {
+                player.vx = 0;
+            }
+
+            player.x += player.vx;
+            // Screen bounds
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > V_WIDTH) player.x = V_WIDTH - player.width;
+
+            // Gravity & Vertical Collision
+            player.vy += player.gravity;
+            player.y += player.vy;
+            player.grounded = false;
+
+            for (let plat of platforms) {
+                // Landing on top of platform
+                if (player.x + player.width > plat.x && player.x < plat.x + plat.width) {
+                    if (player.vy >= 0 && player.y + player.height >= plat.y && player.y + player.height - player.vy <= plat.y + 8) {
+                        player.y = plat.y - player.height;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                }
+            }
+
+            // Update Projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.x += p.vx;
+                p.traveled += Math.abs(p.vx);
+                if (p.traveled >= p.range || p.x < 0 || p.x > V_WIDTH) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+
+                // Check projectile vs enemies
+                for (let e of enemies) {
+                    if (!e.frozen && checkCollision(p, e)) {
+                        e.snowLevel += 1;
+                        soundManager.playFreeze();
+                        projectiles.splice(i, 1);
+                        if (e.snowLevel >= 4) {
+                            e.frozen = true;
+                            e.freezeTimer = 300; // time before defrosting
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Update Snowballs (formed from frozen enemies)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                if (e.frozen) {
+                    e.freezeTimer--;
+                    // Check if player pushes snowball
+                    let pushBox = { x: player.x - 4, y: player.y, width: player.width + 8, height: player.height };
+                    if (checkCollision(pushBox, e)) {
+                        // Convert to rolling snowball
+                        snowballs.push({
+                            x: e.x,
+                            y: e.y,
+                            width: 28,
+                            height: 28,
+                            vx: player.facing === 'right' ? 5 : -5,
+                            vy: 0
+                        });
+                        enemies.splice(i, 1);
+                        score += 500;
+                        soundManager.playExplosion();
+                        continue;
+                    }
+
+                    if (e.freezeTimer <= 0) {
+                        e.frozen = false;
+                        e.snowLevel = 0;
+                    }
+                } else {
+                    // Normal enemy AI movement
+                    e.x += e.vx;
+                    if (e.x <= 10 || e.x + e.width >= V_WIDTH - 10) e.vx *= -1;
+
+                    // Enemy platform gravity
+                    e.vy += player.gravity;
+                    e.y += e.vy;
+                    for (let plat of platforms) {
+                        if (e.x + e.width > plat.x && e.x < plat.x + plat.width) {
+                            if (e.vy >= 0 && e.y + e.height >= plat.y && e.y + e.height - e.vy <= plat.y + 8) {
+                                e.y = plat.y - e.height;
+                                e.vy = 0;
+                            }
+                        }
+                    }
+
+                    // Check collision with player
+                    if (checkCollision(player, e)) {
+                        lives--;
+                        soundManager.playExplosion();
+                        player.x = 60;
+                        player.y = 350;
+                        if (lives <= 0) {
+                            gameState = 'GAMEOVER';
+                            showOverlay("GAME OVER", "The chilly creatures got the best of you. Press PLAY to try again.");
+                        }
+                    }
+                }
+            }
+
+            // Update Rolling Snowballs
+            for (let i = snowballs.length - 1; i >= 0; i--) {
+                let sb = snowballs[i];
+                sb.x += sb.vx;
+                sb.vy += player.gravity;
+                sb.y += sb.vy;
+
+                // Bounce off walls
+                if (sb.x <= 0 || sb.x + sb.width >= V_WIDTH) {
+                    sb.vx *= -1;
+                }
+
+                // Platform collisions for snowball
+                for (let plat of platforms) {
+                    if (sb.x + sb.width > plat.x && sb.x < plat.x + plat.width) {
+                        if (sb.vy >= 0 && sb.y + sb.height >= plat.y && sb.y + sb.height - sb.vy <= plat.y + 8) {
+                            sb.y = plat.y - sb.height;
+                            sb.vy = 0;
+                        }
+                    }
+                }
+
+                // Snowball destroys other remaining enemies
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    let en = enemies[j];
+                    if (checkCollision(sb, en)) {
+                        enemies.splice(j, 1);
+                        score += 1000;
+                        soundManager.playExplosion();
+                    }
+                }
+
+                // Remove out of bounds snowballs
+                if (sb.y > V_HEIGHT) {
+                    snowballs.splice(i, 1);
+                }
+            }
+
+            // Check level clear condition
+            if (enemies.length === 0 && snowballs.length === 0) {
+                currentLevel++;
+                score += 2500;
+                if (currentLevel > 3) {
+                    gameState = 'VICTORY';
+                    showOverlay("VICTORY!", "Congratulations! You rescued the Frost Princesses and turned Nick & Tom back to normal!");
+                } else {
+                    loadLevel(currentLevel);
+                }
+            }
+
+            // Update HUD
+            document.getElementById('score-val').innerText = String(score).padStart(6, '0');
+            if (score > highscore) {
+                highscore = score;
+                document.getElementById('highscore-val').innerText = String(highscore).padStart(7, '0');
+            }
+            document.getElementById('lives-container').innerText = '⛄'.repeat(Math.max(0, lives));
+        }
+
+        function showOverlay(title, desc) {
+            document.getElementById('overlay-title').innerText = title;
+            document.getElementById('overlay-desc').innerText = desc;
+            document.getElementById('start-btn').innerText = gameState === 'VICTORY' ? 'PLAY AGAIN' : 'RESTART';
+            document.getElementById('overlay-screen').classList.remove('hidden');
+        }
+
+        // --- RENDER GRAPHICS (Canvas) ---
+        function render() {
+            ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
+
+            // Draw Background Art / Walls
+            ctx.fillStyle = '#1e1b4b';
+            ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+            // Draw Platforms with Arcade Pattern
+            for (let plat of platforms) {
+                ctx.fillStyle = '#6b21a8'; // Purple arcade brick base
+                ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+                
+                // Top pink/yellow border styling matching reference screenshot
+                ctx.fillStyle = '#ec4899';
+                ctx.fillRect(plat.x, plat.y, plat.width, 4);
+                ctx.fillStyle = '#eab308';
+                ctx.fillRect(plat.x, plat.y + 4, plat.width, 2);
+            }
+
+            // Draw Projectiles (Snow puffs)
+            ctx.fillStyle = '#e0f2fe';
+            for (let p of projectiles) {
+                ctx.beginPath();
+                ctx.arc(p.x + p.width/2, p.y + p.height/2, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw Rolling Snowballs
+            for (let sb of snowballs) {
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(sb.x + sb.width/2, sb.y + sb.height/2, sb.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Draw Enemies
+            for (let e of enemies) {
+                if (e.frozen) {
+                    // Frozen snowball entity
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.beginPath();
+                    ctx.arc(e.x + e.width/2, e.y + e.height/2, e.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    // Active monster sprite representation
+                    ctx.fillStyle = e.color;
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                    // Eyes
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(e.x + 4, e.y + 6, 6, 6);
+                    ctx.fillRect(e.x + 16, e.y + 6, 6, 6);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(e.x + 6, e.y + 8, 2, 2);
+                    ctx.fillRect(e.x + 18, e.y + 8, 2, 2);
+
+                    // Snow accumulation overlay bars if partially hit
+                    if (e.snowLevel > 0) {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                        ctx.fillRect(e.x, e.y, e.width, (e.height / 4) * e.snowLevel);
+                    }
+                }
+            }
+
+            // Draw Player (Nick - Snowman with blue overalls)
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y + 12, player.width, player.height - 12); // body
+            
+            // Snowman head
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width/2, player.y + 10, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pompom hat
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(player.x + 4, player.y - 2, 16, 6);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width/2, player.y - 4, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes & details
+            ctx.fillStyle = '#000000';
+            let eyeOffset = player.facing === 'right' ? 3 : -3;
+            ctx.fillRect(player.x + 10 + eyeOffset, player.y + 8, 2, 2);
+            ctx.fillRect(player.x + 14 + eyeOffset, player.y + 8, 2, 2);
+        }
+
+        // --- MAIN GAME LOOP ---
+        function mainLoop() {
+            update();
+            render();
+            requestAnimationFrame(mainLoop);
+        }
+
+        // Initialize Level preview and start loop
+        loadLevel(1);
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+</html>
