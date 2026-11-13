@@ -1,1 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Hook Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Orbitron', sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .pointer-events-auto {
+            pointer-events: auto;
+        }
+        .neon-text-cyan {
+            color: #00f3ff;
+            text-shadow: 0 0 5px #00f3ff, 0 0 10px #00f3ff, 0 0 20px #00f3ff;
+        }
+        .neon-text-magenta {
+            color: #ff00a0;
+            text-shadow: 0 0 5px #ff00a0, 0 0 10px #ff00a0, 0 0 20px #ff00a0;
+        }
+        .neon-button {
+            background: transparent;
+            color: #00f3ff;
+            border: 2px solid #00f3ff;
+            box-shadow: 0 0 10px #00f3ff inset, 0 0 10px #00f3ff;
+            transition: all 0.2s ease-in-out;
+        }
+        .neon-button:hover {
+            background: #00f3ff;
+            color: #050510;
+            box-shadow: 0 0 20px #00f3ff inset, 0 0 20px #00f3ff;
+        }
+        
+        /* CRT Scanline effect */
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 50;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="scanlines">
 
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div class="ui-layer flex flex-col justify-between">
+        
+        <!-- HUD -->
+        <div id="hud" class="hidden w-full p-6 flex justify-between items-start">
+            <div class="flex flex-col gap-2">
+                <div class="text-2xl font-bold neon-text-cyan">DISTANCIA: <span id="scoreDisplay">0</span>m</div>
+                <div class="text-sm text-gray-300">Izquierda: Gancho | Derecha: Láser</div>
+            </div>
+            
+            <div class="flex flex-col items-end gap-2">
+                <div class="text-xl font-bold neon-text-magenta tracking-widest">TIME WARP (SHIFT)</div>
+                <div class="w-64 h-6 border-2 border-[#ff00a0] rounded-full overflow-hidden shadow-[0_0_10px_#ff00a0]">
+                    <div id="energyBar" class="h-full bg-[#ff00a0] w-full transition-all duration-75 shadow-[0_0_10px_#ff00a0]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="absolute inset-0 flex flex-col items-center justify-center bg-[#050510]/80 backdrop-blur-sm pointer-events-auto">
+            <h1 class="text-7xl font-black mb-2 neon-text-cyan uppercase italic tracking-tighter">CYBER</h1>
+            <h1 class="text-7xl font-black mb-12 neon-text-magenta uppercase italic tracking-tighter ml-12">HOOK</h1>
+            
+            <div class="max-w-lg text-center mb-8 text-cyan-100/80 bg-cyan-900/20 p-6 rounded border border-cyan-500/30">
+                <p class="mb-2"><strong>A / D</strong> o <strong>Flechas</strong>: Moverse</p>
+                <p class="mb-2"><strong>ESPACIO</strong>: Saltar</p>
+                <p class="mb-2"><strong>CLICK IZQUIERDO</strong>: Lanzar Gancho a los bloques azules</p>
+                <p class="mb-2"><strong>CLICK DERECHO</strong>: Disparar Láser a bloques rojos/enemigos</p>
+                <p><strong>MANTENER SHIFT</strong>: Cámara lenta (Consume Energía)</p>
+            </div>
+
+            <button id="startBtn" class="neon-button px-10 py-4 text-2xl font-bold rounded-lg uppercase tracking-widest cursor-pointer">INICIAR JUEGO</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-[#050510]/90 backdrop-blur-md pointer-events-auto hidden">
+            <h2 class="text-6xl font-black mb-6 text-red-500" style="text-shadow: 0 0 10px red, 0 0 20px red;">SISTEMA CAÍDO</h2>
+            <p class="text-3xl text-cyan-200 mb-10 font-bold">Recorrido: <span id="finalScore" class="neon-text-cyan">0</span>m</p>
+            <button id="restartBtn" class="neon-button px-10 py-4 text-2xl font-bold rounded-lg uppercase tracking-widest cursor-pointer">REINICIAR</button>
+        </div>
+    </div>
+
+<script>
+/**
+ * CYBER HOOK - WEB ADAPTATION
+ * Vanilla JS HTML5 Canvas Implementation
+ */
+
+// --- ENTORNO Y SETUP ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const uiMainMenu = document.getElementById('mainMenu');
+const uiGameOver = document.getElementById('gameOverScreen');
+const uiHud = document.getElementById('hud');
+const uiScore = document.getElementById('scoreDisplay');
+const uiFinalScore = document.getElementById('finalScore');
+const uiEnergyBar = document.getElementById('energyBar');
+
+let cw = canvas.width = window.innerWidth;
+let ch = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+    cw = canvas.width = window.innerWidth;
+    ch = canvas.height = window.innerHeight;
+});
+
+// Desactivar menú contextual para el click derecho
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+// --- CONSTANTES FÍSICAS Y GLOBALES ---
+const GRAVITY = 1800; 
+const JUMP_FORCE = -800;
+const MOVE_SPEED = 2000;
+const MAX_SPEED_X = 800;
+const FRICTION = 0.90; // Fricción en el suelo
+const AIR_FRICTION = 0.98; // Fricción en el aire
+const MAX_ENERGY = 100;
+const TIME_WARP_SCALE = 0.3;
+
+// --- ESTADO DEL JUEGO ---
+let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+let lastTime = 0;
+let timeScale = 1.0;
+let camera = { x: 0, y: 0 };
+let score = 0;
+let energy = MAX_ENERGY;
+
+// --- INPUTS ---
+const keys = {};
+const mouse = { x: 0, y: 0, leftDown: false, rightDown: false };
+
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+window.addEventListener('mousedown', e => {
+    if (e.button === 0) mouse.leftDown = true;
+    if (e.button === 2) mouse.rightDown = true;
+    
+    if (gameState === 'PLAYING') {
+        if (e.button === 0) player.fireHook();
+        if (e.button === 2) player.fireLaser();
+    }
+});
+window.addEventListener('mouseup', e => {
+    if (e.button === 0) {
+        mouse.leftDown = false;
+        player.releaseHook();
+    }
+    if (e.button === 2) mouse.rightDown = false;
+});
+
+// --- CLASES DEL JUEGO ---
+
+class Player {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.w = 30;
+        this.h = 40;
+        this.x = 200;
+        this.y = ch / 2 - 100;
+        this.vx = 0;
+        this.vy = 0;
+        this.color = '#fff';
+        this.isGrounded = false;
+        
+        this.hook = {
+            active: false,
+            x: 0,
+            y: 0,
+            targetBlock: null,
+            length: 0,
+            stiffness: 15 // Fuerza del resorte
+        };
+        this.lasers = [];
+    }
+
+    fireHook() {
+        if (this.hook.active) return;
+
+        // Calcular posición del ratón en el mundo
+        const worldMouseX = mouse.x + camera.x;
+        const worldMouseY = mouse.y + camera.y;
+
+        // Encontrar bloque azul más cercano (Grapple Point) al que se apunta
+        let closestBlock = null;
+        let minDistance = 800; // Rango máximo del gancho
+
+        for (let b of blocks) {
+            if (b.type !== 'GRAPPLE') continue;
+            
+            let bx = b.x + b.w/2;
+            let by = b.y + b.h/2;
+            let dist = Math.hypot(bx - this.x, by - this.y);
+            
+            // Chequear si el ratón está cerca del bloque para apuntar
+            let aimDist = Math.hypot(bx - worldMouseX, by - worldMouseY);
+
+            if (dist < minDistance && aimDist < 150) { // Tolerancia de apuntado
+                closestBlock = b;
+                minDistance = dist;
+            }
+        }
+
+        if (closestBlock) {
+            this.hook.active = true;
+            this.hook.targetBlock = closestBlock;
+            this.hook.x = closestBlock.x + closestBlock.w/2;
+            this.hook.y = closestBlock.y + closestBlock.h/2;
+            this.hook.length = Math.hypot(this.hook.x - this.x, this.hook.y - this.y);
+            
+            // Impulso inicial ligero hacia arriba
+            this.vy -= 200;
+        }
+    }
+
+    releaseHook() {
+        this.hook.active = false;
+        this.hook.targetBlock = null;
+    }
+
+    fireLaser() {
+        const worldMouseX = mouse.x + camera.x;
+        const worldMouseY = mouse.y + camera.y;
+        
+        let angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+        
+        this.lasers.push({
+            x: this.x,
+            y: this.y,
+            vx: Math.cos(angle) * 2000,
+            vy: Math.sin(angle) * 2000,
+            life: 1.0 // 1 segundo de vida (escalado por tiempo)
+        });
+    }
+
+    update(dt) {
+        // Gravedad
+        this.vy += GRAVITY * dt;
+
+        // Controles de movimiento horizontal
+        let moveInput = 0;
+        if (keys['KeyA'] || keys['ArrowLeft']) moveInput -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) moveInput += 1;
+
+        if (moveInput !== 0) {
+            this.vx += moveInput * MOVE_SPEED * dt;
+        }
+
+        // Fricción
+        if (this.isGrounded) {
+            this.vx *= Math.pow(FRICTION, dt * 60);
+        } else {
+            this.vx *= Math.pow(AIR_FRICTION, dt * 60);
+        }
+
+        // Limitar velocidad horizontal máxima (a menos que estemos siendo jalados fuertemente)
+        if (!this.hook.active && Math.abs(this.vx) > MAX_SPEED_X) {
+            this.vx = Math.sign(this.vx) * MAX_SPEED_X;
+        }
+
+        // Salto
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && this.isGrounded) {
+            this.vy = JUMP_FORCE;
+            this.isGrounded = false;
+        }
+
+        // Físicas del Gancho (Spring physics)
+        if (this.hook.active && this.hook.targetBlock) {
+            let dx = this.hook.x - this.x;
+            let dy = this.hook.y - this.y;
+            let dist = Math.hypot(dx, dy);
+
+            // Si nos alejamos más allá de la longitud de la cuerda, nos jala de regreso
+            if (dist > 50) {
+                let force = (dist - this.hook.length * 0.5) * this.hook.stiffness; // Acorta la cuerda virtualmente
+                
+                // Normalizar vector
+                let nx = dx / dist;
+                let ny = dy / dist;
+
+                this.vx += nx * force * dt;
+                this.vy += ny * force * dt;
+            }
+        }
+
+        // Aplicar velocidad a la posición
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Actualizar Láseres
+        for (let i = this.lasers.length - 1; i >= 0; i--) {
+            let l = this.lasers[i];
+            l.x += l.vx * dt;
+            l.y += l.vy * dt;
+            l.life -= dt;
+            if (l.life <= 0) {
+                this.lasers.splice(i, 1);
+            }
+        }
+
+        // Colisiones con bloques
+        this.isGrounded = false;
+        for (let i = blocks.length - 1; i >= 0; i--) {
+            let b = blocks[i];
+            
+            // Láser hit destructible
+            if (b.type === 'DESTRUCTIBLE') {
+                for (let j = this.lasers.length - 1; j >= 0; j--) {
+                    let l = this.lasers[j];
+                    if (l.x > b.x && l.x < b.x + b.w && l.y > b.y && l.y < b.y + b.h) {
+                        blocks.splice(i, 1); // Destruir bloque
+                        this.lasers.splice(j, 1); // Destruir láser
+                        
+                        // Crear partículas
+                        createParticles(b.x + b.w/2, b.y + b.h/2, '#ff00a0');
+                        break;
+                    }
+                }
+            }
+
+            // Player collision
+            if (b.type === 'SOLID' || b.type === 'DESTRUCTIBLE') {
+                // AABB Collision Check simple (evitando túnel de alta velocidad chequeando overlap previo)
+                if (this.x + this.w/2 > b.x && this.x - this.w/2 < b.x + b.w &&
+                    this.y + this.h/2 > b.y && this.y - this.h/2 < b.y + b.h) {
+                    
+                    // Resolver colisión empujando en el eje con menor penetración
+                    let overlapLeft = (this.x + this.w/2) - b.x;
+                    let overlapRight = (b.x + b.w) - (this.x - this.w/2);
+                    let overlapTop = (this.y + this.h/2) - b.y;
+                    let overlapBottom = (b.y + b.h) - (this.y - this.h/2);
+
+                    let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
+                    if (minOverlap === overlapTop) {
+                        this.y = b.y - this.h/2;
+                        this.vy = 0;
+                        this.isGrounded = true;
+                    } else if (minOverlap === overlapBottom) {
+                        this.y = b.y + b.h + this.h/2;
+                        this.vy = Math.max(0, this.vy); // Golpear techo
+                    } else if (minOverlap === overlapLeft) {
+                        this.x = b.x - this.w/2;
+                        this.vx = 0;
+                    } else if (minOverlap === overlapRight) {
+                        this.x = b.x + b.w + this.w/2;
+                        this.vx = 0;
+                    }
+                }
+            }
+        }
+
+        // Condición de Muerte (Caída al vacío)
+        if (this.y > camera.y + ch + 500) {
+            endGame();
+        }
+    }
+
+    draw(ctx) {
+        // Dibujar Gancho
+        if (this.hook.active) {
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.hook.x, this.hook.y);
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00f3ff';
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Reset
+        }
+
+        // Dibujar Láseres
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ffea00';
+        ctx.fillStyle = '#ffffff';
+        for (let l of this.lasers) {
+            ctx.beginPath();
+            ctx.arc(l.x, l.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Trail
+            ctx.beginPath();
+            ctx.moveTo(l.x, l.y);
+            ctx.lineTo(l.x - l.vx*0.05, l.y - l.vy*0.05);
+            ctx.strokeStyle = '#ffea00';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+
+        // Dibujar Jugador
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Tilt based on velocity
+        ctx.rotate(this.vx * 0.0005);
+        
+        // Cuerpo
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#00f3ff';
+        ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+        
+        // Detalle interno
+        ctx.fillStyle = '#050510';
+        ctx.shadowBlur = 0;
+        ctx.fillRect(-this.w/2 + 4, -this.h/2 + 4, this.w - 8, this.h - 8);
+        
+        // Ojo/Visor
+        ctx.fillStyle = '#ff00a0';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff00a0';
+        let lookDir = Math.sign(mouse.x + camera.x - this.x) || 1;
+        ctx.fillRect(-6 + lookDir*6, -10, 12, 6);
+
+        ctx.restore();
+    }
+}
+
+// --- GENERACIÓN DE MUNDO ---
+let blocks = [];
+let nextGenX = 0;
+
+function resetWorld() {
+    blocks = [];
+    nextGenX = 0;
+    
+    // Suelo inicial seguro
+    blocks.push({ x: 0, y: ch/2 + 100, w: 1000, h: 50, type: 'SOLID' });
+    nextGenX = 1000;
+    
+    generateChunks();
+}
+
+function generateChunks() {
+    // Generar terreno hasta que cubramos al menos 2 anchos de pantalla más allá de la cámara
+    while (nextGenX < camera.x + cw * 3) {
+        
+        let gap = 150 + Math.random() * 300;
+        nextGenX += gap;
+
+        // Crear Suelo
+        let groundW = 300 + Math.random() * 800;
+        let groundY = (ch/2) + (Math.random() * 400 - 100); 
+        
+        blocks.push({
+            x: nextGenX,
+            y: groundY,
+            w: groundW,
+            h: 50 + Math.random() * 100,
+            type: 'SOLID'
+        });
+
+        // Generar puntos de anclaje (Grapple) en el aire
+        if (Math.random() > 0.3) {
+            blocks.push({
+                x: nextGenX + groundW/2 + (Math.random()*200 - 100),
+                y: groundY - 400 - Math.random() * 300,
+                w: 60,
+                h: 60,
+                type: 'GRAPPLE'
+            });
+        }
+
+        // Generar obstáculos (Destructibles)
+        if (Math.random() > 0.4) {
+            blocks.push({
+                x: nextGenX + groundW/2,
+                y: groundY - 100 - Math.random() * 150,
+                w: 80,
+                h: 80,
+                type: 'DESTRUCTIBLE'
+            });
+        }
+
+        nextGenX += groundW;
+    }
+
+    // Limpiar bloques que ya pasamos de largo (optimización)
+    blocks = blocks.filter(b => b.x + b.w > camera.x - cw);
+}
+
+function drawBlocks(ctx) {
+    for (let b of blocks) {
+        ctx.beginPath();
+        ctx.rect(b.x, b.y, b.w, b.h);
+
+        if (b.type === 'SOLID') {
+            ctx.fillStyle = '#0a0b1a';
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 2;
+            ctx.fill();
+            
+            // Grid interior para estilo synthwave
+            ctx.save();
+            ctx.clip();
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<b.w; i+=40) {
+                ctx.beginPath(); ctx.moveTo(b.x+i, b.y); ctx.lineTo(b.x+i, b.y+b.h); ctx.stroke();
+            }
+            for(let j=0; j<b.h; j+=40) {
+                ctx.beginPath(); ctx.moveTo(b.x, b.y+j); ctx.lineTo(b.x+b.w, b.y+j); ctx.stroke();
+            }
+            ctx.restore();
+            
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00f3ff';
+            ctx.stroke();
+        } 
+        else if (b.type === 'GRAPPLE') {
+            // Cubo flotante de neón azul
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.1)';
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f3ff';
+            ctx.fill();
+            ctx.stroke();
+            // Detalle interno
+            ctx.strokeRect(b.x+10, b.y+10, b.w-20, b.h-20);
+        }
+        else if (b.type === 'DESTRUCTIBLE') {
+            // Cubo de neón magenta
+            ctx.fillStyle = 'rgba(255, 0, 160, 0.1)';
+            ctx.strokeStyle = '#ff00a0';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#ff00a0';
+            ctx.fill();
+            ctx.stroke();
+            // Cruz interna (target)
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y); ctx.lineTo(b.x+b.w, b.y+b.h);
+            ctx.moveTo(b.x+b.w, b.y); ctx.lineTo(b.x, b.y+b.h);
+            ctx.stroke();
+        }
+        ctx.shadowBlur = 0; // reset
+    }
+}
+
+// --- PARTÍCULAS ---
+let particles = [];
+function createParticles(x, y, color) {
+    for(let i=0; i<15; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 800,
+            vy: (Math.random() - 0.5) * 800,
+            life: 0.5 + Math.random() * 0.5,
+            color: color
+        });
+    }
+}
+function updateAndDrawParticles(ctx, dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        } else {
+            ctx.fillStyle = p.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fillRect(p.x, p.y, 6, 6);
+            ctx.globalAlpha = 1.0;
+        }
+    }
+    ctx.shadowBlur = 0;
+}
+
+// --- ESTÉTICA DE FONDO (SYNTHWAVE) ---
+let timeGlobal = 0;
+function drawBackground(ctx) {
+    // Cielo gradiente espacial
+    let bgGrad = ctx.createLinearGradient(0, 0, 0, ch);
+    bgGrad.addColorStop(0, '#02000d'); // Muy oscuro
+    bgGrad.addColorStop(0.6, '#0b001a');
+    bgGrad.addColorStop(1, '#1b0033'); // Púrpura base
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(camera.x, camera.y, cw, ch);
+
+    // Estrellas (Parallax lento)
+    ctx.fillStyle = '#fff';
+    for(let i=0; i<100; i++) {
+        // Uso de coordenadas pseudo-aleatorias basadas en indice para que sean consistentes pero se muevan
+        let sx = ((i * 137 + camera.x * 0.1) % cw + cw) % cw; 
+        let sy = ((i * 97 + camera.y * 0.1) % ch + ch) % ch;
+        ctx.globalAlpha = (Math.sin(timeGlobal * 3 + i) + 1) * 0.4 + 0.2;
+        ctx.fillRect(camera.x + sx, camera.y + sy, 2, 2);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // SOL RETRO (Parallax medio)
+    let sunRadius = Math.min(cw, ch) * 0.25;
+    let sunX = camera.x + cw/2 + camera.x * 0.8; // Se desplaza ligeramente con la cámara
+    let sunY = camera.y + ch/2 + 50 + camera.y * 0.8;
+    
+    let sunGrad = ctx.createLinearGradient(sunX, sunY - sunRadius, sunX, sunY + sunRadius);
+    sunGrad.addColorStop(0, '#ffea00');
+    sunGrad.addColorStop(1, '#ff00a0');
+    
+    ctx.fillStyle = sunGrad;
+    ctx.shadowBlur = 50;
+    ctx.shadowColor = '#ff00a0';
+    
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunRadius, 0, Math.PI*2);
+    ctx.fill();
+
+    // Recortes horizontales en el Sol
+    ctx.globalCompositeOperation = 'destination-out';
+    for(let i = 0; i < 10; i++) {
+        let lineH = 3 + i * 1.5;
+        let lineY = sunY + sunRadius * 0.1 + i * 15;
+        ctx.fillRect(sunX - sunRadius, lineY, sunRadius * 2, lineH);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = 0;
+
+    // WIREFRAME MOUNTAINS (Parallax)
+    ctx.strokeStyle = '#ff00a0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(let x=0; x<cw; x+=50) {
+        let worldX = x + camera.x * 0.9;
+        let mtY = Math.sin(worldX * 0.005) * 50 + Math.sin(worldX * 0.01) * 30 + (ch*0.75);
+        if (x===0) ctx.moveTo(camera.x + x, camera.y + mtY);
+        else ctx.lineTo(camera.x + x, camera.y + mtY);
+    }
+    ctx.stroke();
+
+    // GRID DEL SUELO DE FONDO
+    ctx.save();
+    ctx.translate(camera.x, camera.y + ch); // Anclado abajo
+    
+    // Crear gradiente para difuminar la cuadrícula a lo lejos
+    let gridGrad = ctx.createLinearGradient(0, 0, 0, -ch*0.4);
+    gridGrad.addColorStop(0, '#00f3ff');
+    gridGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = gridGrad;
+    ctx.lineWidth = 1;
+    
+    ctx.beginPath();
+    // Lineas horizontales animadas hacia el jugador
+    for(let i=0; i<20; i++) {
+        let z = Math.pow(i + (timeGlobal*5)%1, 2) * 1.5; 
+        if (z < ch*0.4) {
+            ctx.moveTo(0, -z);
+            ctx.lineTo(cw, -z);
+        }
+    }
+    // Lineas verticales perspectiva
+    let cx = cw/2;
+    for(let i=-20; i<=20; i++) {
+        ctx.moveTo(cx + i*40, 0);
+        ctx.lineTo(cx + i*150, -ch*0.4);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+// --- INSTANCIAS ---
+const player = new Player();
+
+// --- LÓGICA PRINCIPAL ---
+
+function startGame() {
+    gameState = 'PLAYING';
+    uiMainMenu.classList.add('hidden');
+    uiGameOver.classList.add('hidden');
+    uiHud.classList.remove('hidden');
+    
+    player.reset();
+    resetWorld();
+    
+    score = 0;
+    energy = MAX_ENERGY;
+    camera.x = player.x - cw / 3;
+    camera.y = player.y - ch / 2;
+    lastTime = performance.now();
+    
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+    gameState = 'GAMEOVER';
+    uiHud.classList.add('hidden');
+    uiGameOver.classList.remove('hidden');
+    uiFinalScore.innerText = Math.floor(score);
+}
+
+function gameLoop(timestamp) {
+    if (gameState !== 'PLAYING') return;
+
+    // Delta Time (limitado para evitar saltos locos al cambiar de pestaña)
+    let realDt = (timestamp - lastTime) / 1000;
+    if (realDt > 0.1) realDt = 0.1; 
+    lastTime = timestamp;
+    timeGlobal += realDt;
+
+    // Time Warp Logic
+    if (keys['ShiftLeft'] || keys['ShiftRight']) {
+        if (energy > 0) {
+            timeScale = TIME_WARP_SCALE;
+            energy -= realDt * 30; // Drenar energía
+            if (energy < 0) energy = 0;
+        } else {
+            timeScale = 1.0;
+        }
+    } else {
+        timeScale = 1.0;
+        energy += realDt * 10; // Recuperar energía
+        if (energy > MAX_ENERGY) energy = MAX_ENERGY;
+    }
+
+    // Actualizar UI Energía y Score
+    uiEnergyBar.style.width = `${(energy / MAX_ENERGY) * 100}%`;
+    score = Math.max(score, player.x / 50); // Puntos = Distancia recorrida
+    uiScore.innerText = Math.floor(score);
+
+    // dt aplicado al juego
+    let dt = realDt * timeScale;
+
+    // Actualizaciones
+    player.update(dt);
+    generateChunks();
+
+    // Actualizar Cámara (Suave)
+    let targetCamX = player.x - cw / 3;
+    let targetCamY = player.y - ch / 1.5;
+    
+    // Movimiento rápido en X, más lento en Y para no marear
+    camera.x += (targetCamX - camera.x) * 5 * realDt; 
+    camera.y += (targetCamY - camera.y) * 2 * realDt;
+    
+    // Evitar que la cámara vaya hacia atrás (forcing forward progress like a runner)
+    // if (targetCamX > camera.x) camera.x = targetCamX; 
+
+    // --- RENDERIZADO ---
+    ctx.clearRect(0, 0, cw, ch);
+    
+    ctx.save();
+    // Efectos globales si está en slowmo
+    if (timeScale < 1.0) {
+        // Ligero filtro rojo/aberración simulada en slowmo
+        ctx.fillStyle = 'rgba(255, 0, 160, 0.05)';
+        ctx.fillRect(0,0,cw,ch);
+    }
+    
+    // Aplicar transformación de cámara
+    ctx.translate(-camera.x, -camera.y);
+
+    drawBackground(ctx);
+    drawBlocks(ctx);
+    updateAndDrawParticles(ctx, dt);
+    player.draw(ctx);
+
+    ctx.restore();
+
+    requestAnimationFrame(gameLoop);
+}
+
+// --- EVENTOS UI ---
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+
+// Iniciar dibujado estático de fondo para el menú (una vez)
+drawBackground(ctx);
+
+</script>
+</body>
+</html>
