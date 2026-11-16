@@ -1,1 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block World 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Inter', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        /* Crosshair */
+        .crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .crosshair::before, .crosshair::after {
+            content: ''; position: absolute; background: rgba(255, 255, 255, 0.8);
+        }
+        .crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        .crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
 
+        /* Menú y superposiciones */
+        #blocker {
+            position: absolute; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; transition: opacity 0.3s;
+        }
+        
+        /* Inventario/Hotbar */
+        #hotbar {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; padding: 10px; background: rgba(0,0,0,0.4);
+            border-radius: 12px; pointer-events: none;
+        }
+        .slot {
+            width: 48px; height: 48px; border: 3px solid rgba(255,255,255,0.2);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white; text-shadow: 1px 1px 2px black;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5); transition: all 0.2s;
+        }
+        .slot.active {
+            border-color: white; transform: scale(1.1); box-shadow: inset 0 0 15px rgba(255,255,255,0.4);
+        }
+    </style>
+    
+    <!-- Import Maps para Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- Contenedor del juego -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div class="crosshair"></div>
+    
+    <div id="hotbar">
+        <!-- Generado por JS -->
+    </div>
+
+    <!-- Menú de Inicio -->
+    <div id="blocker">
+        <h1 class="text-6xl font-black text-white mb-2 drop-shadow-lg tracking-wider" style="-webkit-text-stroke: 2px #333;">BLOCK WORLD 3D</h1>
+        
+        <!-- Instrucciones detalladas añadidas para visibilidad inmediata -->
+        <div class="bg-blue-900/80 border-2 border-yellow-400 p-4 rounded-xl text-white mb-6 text-center max-w-lg shadow-2xl">
+            <h2 class="text-yellow-300 font-bold text-lg mb-1">🎮 CÓMO JUGAR:</h2>
+            <p class="text-sm mb-2"><b>Haz clic en el botón de abajo</b> para entrar al juego.</p>
+            <div class="grid grid-cols-2 gap-2 text-xs text-left bg-black/40 p-3 rounded">
+                <div>• <b>W, A, S, D:</b> Moverse</div>
+                <div>• <b>ESPACIO:</b> Saltar</div>
+                <div>• <b>Clic Izquierdo:</b> Romper Bloque</div>
+                <div>• <b>Clic Derecho:</b> Colocar Bloque</div>
+                <div>• <b>Arrastrar Ratón:</b> Mirar / Girar Cámara</div>
+                <div>• <b>Teclas 1-6:</b> Cambiar Material</div>
+            </div>
+        </div>
+
+        <button id="start-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold text-xl px-8 py-4 rounded-xl shadow-lg border-2 border-green-400 transition transform hover:scale-105 cursor-pointer">
+            ¡COMENZAR A JUGAR!
+        </button>
+    </div>
+
+    <!-- Lógica Principal -->
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ==========================================
+        // 1. CONFIGURACIÓN INICIAL DEL MOTOR
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const blocker = document.getElementById('blocker');
+        const startBtn = document.getElementById('start-btn');
+        const hotbar = document.getElementById('hotbar');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Cielo azul claro
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 60); // Niebla atmosférica
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // ==========================================
+        // 2. ILUMINACIÓN
+        // ==========================================
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -50;
+        dirLight.shadow.camera.right = 50;
+        dirLight.shadow.camera.top = 50;
+        dirLight.shadow.camera.bottom = -50;
+        dirLight.shadow.bias = -0.001;
+        scene.add(dirLight);
+
+        // ==========================================
+        // 3. DEFINICIÓN DE BLOQUES Y MATERIALES
+        // ==========================================
+        const BLOCKS = {
+            GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5, SAND: 6
+        };
+        const BLOCK_COLORS = {
+            [BLOCKS.GRASS]: 0x55aa33,  // Verde césped
+            [BLOCKS.DIRT]: 0x6b4423,   // Marrón tierra
+            [BLOCKS.STONE]: 0x888888,  // Gris piedra
+            [BLOCKS.WOOD]: 0x5c4033,   // Marrón oscuro
+            [BLOCKS.LEAVES]: 0x2d5a27, // Verde oscuro
+            [BLOCKS.SAND]: 0xd2b48c    // Arena
+        };
+
+        let currentSelectedBlock = BLOCKS.GRASS;
+
+        // ==========================================
+        // 4. SISTEMA INSTANCED MESH (Rendimiento Extremo)
+        // ==========================================
+        const MAX_BLOCKS = 100000;
+        let blockCount = 0;
+        
+        const blockMap = new Map(); 
+        const instanceToKey = new Array(MAX_BLOCKS); 
+
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const instancedMesh = new THREE.InstancedMesh(geometry, material, MAX_BLOCKS);
+        
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        instancedMesh.castShadow = true;
+        instancedMesh.receiveShadow = true;
+        scene.add(instancedMesh);
+
+        const dummyMatrix = new THREE.Matrix4();
+        const dummyColor = new THREE.Color();
+
+        function addBlock(x, y, z, type) {
+            if (blockCount >= MAX_BLOCKS) return;
+            const key = `${x},${y},${z}`;
+            if (blockMap.has(key)) return;
+
+            dummyMatrix.makeTranslation(x, y, z);
+            instancedMesh.setMatrixAt(blockCount, dummyMatrix);
+
+            dummyColor.setHex(BLOCK_COLORS[type]);
+            instancedMesh.setColorAt(blockCount, dummyColor);
+
+            blockMap.set(key, { type, instanceId: blockCount });
+            instanceToKey[blockCount] = key;
+
+            blockCount++;
+            
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+        }
+
+        function removeBlock(x, y, z) {
+            const key = `${x},${y},${z}`;
+            if (!blockMap.has(key)) return;
+
+            const instanceId = blockMap.get(key).instanceId;
+            blockMap.delete(key);
+
+            blockCount--;
+
+            if (instanceId !== blockCount) {
+                instancedMesh.getMatrixAt(blockCount, dummyMatrix);
+                instancedMesh.getColorAt(blockCount, dummyColor);
+
+                instancedMesh.setMatrixAt(instanceId, dummyMatrix);
+                instancedMesh.setColorAt(instanceId, dummyColor);
+
+                const lastKey = instanceToKey[blockCount];
+                instanceToKey[instanceId] = lastKey;
+                blockMap.get(lastKey).instanceId = instanceId;
+            }
+
+            dummyMatrix.makeScale(0, 0, 0);
+            instancedMesh.setMatrixAt(blockCount, dummyMatrix);
+
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+        }
+
+        // ==========================================
+        // 5. GENERACIÓN DE MUNDO PROCEDIMENTAL
+        // ==========================================
+        function generateWorld() {
+            const size = 32;
+            for (let x = -size; x <= size; x++) {
+                for (let z = -size; z <= size; z++) {
+                    let y = Math.floor(Math.sin(x / 8) * 3 + Math.cos(z / 8) * 3);
+                    let surfaceType = y < -2 ? BLOCKS.SAND : BLOCKS.GRASS;
+                    addBlock(x, y, z, surfaceType);
+                    
+                    for (let d = 1; d < 4; d++) addBlock(x, y - d, z, BLOCKS.DIRT);
+                    addBlock(x, y - 4, z, BLOCKS.STONE);
+
+                    if (surfaceType === BLOCKS.GRASS && Math.random() < 0.01) {
+                        const h = 4 + Math.floor(Math.random() * 2);
+                        for(let ty = 1; ty <= h; ty++) addBlock(x, y + ty, z, BLOCKS.WOOD);
+                        for(let lx = -2; lx <= 2; lx++) {
+                            for(let lz = -2; lz <= 2; lz++) {
+                                for(let ly = h - 1; ly <= h + 1; ly++) {
+                                    if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
+                                    addBlock(x + lx, y + ly, z + lz, BLOCKS.LEAVES);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        generateWorld();
+
+        // ==========================================
+        // 6. JUGADOR, FÍSICAS Y CONTROLES LIBRES
+        // ==========================================
+        let gameStarted = false;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+        const player = {
+            pos: new THREE.Vector3(0, 15, 0),
+            vel: new THREE.Vector3(0, 0, 0),
+            size: { width: 0.6, height: 1.6 },
+            onGround: false,
+            speed: 5.0,
+            jumpForce: 8.0,
+            gravity: 20.0
+        };
+
+        camera.position.copy(player.pos);
+
+        // Iniciar juego al hacer clic en el botón
+        startBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            blocker.style.opacity = '0';
+            setTimeout(() => blocker.style.display = 'none', 300);
+            gameStarted = true;
+        });
+
+        // Control de rotación de cámara fluido por Arrastre (Click & Drag)
+        document.addEventListener('mousedown', (e) => {
+            if (!gameStarted) return;
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!gameStarted || !isDragging) return;
+
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+
+            euler.setFromQuaternion(camera.quaternion);
+            euler.y -= deltaX * 0.003;
+            euler.x -= deltaY * 0.003;
+            euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Soporte táctil para móviles
+        let touchStartPos = { x: 0, y: 0 };
+        document.addEventListener('touchstart', (e) => {
+            if (!gameStarted) return;
+            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!gameStarted) return;
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartPos.x;
+            const deltaY = touch.clientY - touchStartPos.y;
+
+            euler.setFromQuaternion(camera.quaternion);
+            euler.y -= deltaX * 0.005;
+            euler.x -= deltaY * 0.005;
+            euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+        }, { passive: false });
+
+        // Controles de Teclado
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        document.addEventListener('keydown', (e) => {
+            const key = e.code.toLowerCase().replace('key', '');
+            if (keys.hasOwnProperty(key)) keys[key] = true;
+            if (e.code === 'Space') keys.space = true;
+            
+            if (e.key >= '1' && e.key <= '6') {
+                const types = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.LEAVES, BLOCKS.SAND];
+                currentSelectedBlock = types[parseInt(e.key) - 1];
+                updateHotbarUI();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            const key = e.code.toLowerCase().replace('key', '');
+            if (keys.hasOwnProperty(key)) keys[key] = false;
+            if (e.code === 'Space') keys.space = false;
+        });
+
+        function checkCollision(pos) {
+            const minX = Math.floor(pos.x - player.size.width / 2);
+            const maxX = Math.floor(pos.x + player.size.width / 2);
+            const minY = Math.floor(pos.y - player.size.height);
+            const maxY = Math.floor(pos.y + 0.1);
+            const minZ = Math.floor(pos.z - player.size.width / 2);
+            const maxZ = Math.floor(pos.z + player.size.width / 2);
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        if (blockMap.has(`${x},${y},${z}`)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function updatePhysics(dt) {
+            if (!gameStarted) return;
+
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            forward.y = 0; forward.normalize();
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            right.y = 0; right.normalize();
+
+            const dir = new THREE.Vector3();
+            if (keys.w) dir.add(forward);
+            if (keys.s) dir.sub(forward);
+            if (keys.d) dir.add(right);
+            if (keys.a) dir.sub(right);
+            if (dir.lengthSq() > 0) dir.normalize();
+
+            player.vel.x = dir.x * player.speed;
+            player.vel.z = dir.z * player.speed;
+
+            if (player.onGround && keys.space) {
+                player.vel.y = player.jumpForce;
+                player.onGround = false;
+            }
+            player.vel.y -= player.gravity * dt;
+
+            player.pos.x += player.vel.x * dt;
+            if (checkCollision(player.pos)) player.pos.x -= player.vel.x * dt;
+
+            player.pos.z += player.vel.z * dt;
+            if (checkCollision(player.pos)) player.pos.z -= player.vel.z * dt;
+
+            player.pos.y += player.vel.y * dt;
+            if (checkCollision(player.pos)) {
+                player.pos.y -= player.vel.y * dt;
+                if (player.vel.y < 0) player.onGround = true;
+                player.vel.y = 0;
+            } else {
+                player.onGround = false;
+            }
+
+            camera.position.copy(player.pos);
+            
+            if (player.pos.y < -20) {
+                player.pos.set(0, 20, 0);
+                player.vel.set(0, 0, 0);
+            }
+        }
+
+        // ==========================================
+        // 7. RAYCASTING E INTERACCIÓN DE BLOQUES
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const outlineGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.005, 1.005, 1.005));
+        const outlineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+        const highlightBox = new THREE.LineSegments(outlineGeo, outlineMat);
+        highlightBox.visible = false;
+        scene.add(highlightBox);
+
+        function getLookingAt() {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObject(instancedMesh);
+            
+            if (intersects.length > 0 && intersects[0].distance < 7) {
+                const intersect = intersects[0];
+                const p = intersect.point.clone().sub(intersect.face.normal.clone().multiplyScalar(0.1));
+                const targetPos = new THREE.Vector3(Math.round(p.x), Math.round(p.y), Math.round(p.z));
+                
+                const n = intersect.point.clone().add(intersect.face.normal.clone().multiplyScalar(0.1));
+                const placePos = new THREE.Vector3(Math.round(n.x), Math.round(n.y), Math.round(n.z));
+
+                return { target: targetPos, place: placePos };
+            }
+            return null;
+        }
+
+        // Clics para romper y colocar bloques (solo si no se estaba arrastrando la cámara largamente)
+        let clickStartTime = 0;
+        document.addEventListener('mousedown', () => { clickStartTime = Date.now(); });
+
+        document.addEventListener('click', (e) => {
+            if (!gameStarted) return;
+            // Si el tiempo transcurrido fue muy largo, se consideró un arrastre de cámara
+            if (Date.now() - clickStartTime > 250) return;
+
+            const hit = getLookingAt();
+            if (!hit) return;
+
+            // Clic Izquierdo (botón 0 por defecto o tap rápido)
+            if (e.button === 0) {
+                removeBlock(hit.target.x, hit.target.y, hit.target.z);
+            }
+        });
+
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!gameStarted) return;
+
+            const hit = getLookingAt();
+            if (!hit) return;
+
+            // Clic Derecho -> Colocar bloque
+            const px = Math.round(player.pos.x);
+            const pz = Math.round(player.pos.z);
+            const py = Math.floor(player.pos.y);
+            if (hit.place.x === px && hit.place.z === pz && (hit.place.y === py || hit.place.y === py - 1)) {
+                return; 
+            }
+            addBlock(hit.place.x, hit.place.y, hit.place.z, currentSelectedBlock);
+        });
+
+        // ==========================================
+        // 8. HUD INVENTARIO
+        // ==========================================
+        const blockNames = ["Césped", "Tierra", "Piedra", "Madera", "Hojas", "Arena"];
+        function updateHotbarUI() {
+            hotbar.innerHTML = '';
+            blockNames.forEach((name, index) => {
+                const typeId = index + 1;
+                const hexColor = '#' + BLOCK_COLORS[typeId].toString(16).padStart(6, '0');
+                const isAct = typeId === currentSelectedBlock ? 'active' : '';
+                
+                hotbar.innerHTML += `
+                    <div class="slot ${isAct}" style="background-color: ${hexColor};">
+                        <span style="-webkit-text-stroke: 1px black;">${index + 1}</span>
+                    </div>
+                `;
+            });
+        }
+        updateHotbarUI();
+
+        // ==========================================
+        // 9. BUCLE PRINCIPAL
+        // ==========================================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+
+            updatePhysics(dt);
+
+            if (gameStarted) {
+                const hit = getLookingAt();
+                if (hit) {
+                    highlightBox.position.copy(hit.target);
+                    highlightBox.visible = true;
+                } else {
+                    highlightBox.visible = false;
+                }
+            } else {
+                highlightBox.visible = false;
+            }
+
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
